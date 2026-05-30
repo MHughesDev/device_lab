@@ -337,6 +337,8 @@ Purpose: External discovery and provisional architecture decisions for future pr
 | 23.10 | Research notes — security observability | `docs/research/notes/security-observability-onboarding.md` | Keyring headless Linux, mTLS, OTel, SBOM, MCP onboarding deeplinks synthesis. |
 | 23.11 | Research reference index | `docs/research/reference/README.md` | Points to external registry + skim digest; explains how to track upstreams. |
 | 23.12 | External reference registry and digest | `docs/research/reference/EXTERNAL_REFERENCE.md` | Part A: slugged URL/repo registry; Part B: direct-read skim notes with retrieve dates. |
+| 23.13 | OSS repo candidates — subsystem outsourcing | `docs/research/notes/oss-repo-candidates.md` | Enumerated open source GitHub repos to clone parts of per DeviceLab subsystem, with licenses and exact directories. |
+| 23.14 | End-state capabilities (research copy) | `docs/research/end-state-capabilities.md` | Copy of doc 25.1 — full feature enumeration kept alongside research for cross-reference. |
 
 ### Section 24 — Roadmap
 
