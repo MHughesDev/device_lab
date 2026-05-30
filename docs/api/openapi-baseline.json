@@ -1,0 +1,11 @@
+{
+  "_comment": "This JSON file cannot have comments per JSON spec. This key is the documentation.",
+  "_purpose": "OpenAPI baseline for openapi-diff machinery. Stores the last-reviewed API schema for breaking change detection. Updated with: python skills/backend/openapi-diff.py --mode update. Per spec §26.12 item 391.",
+  "_initial": "Empty baseline at template initialization. Populated after first initialization PR is merged and API is running.",
+  "openapi": "3.1.0",
+  "info": {
+    "title": "{{PROJECT_NAME}} API",
+    "version": "0.1.0"
+  },
+  "paths": {}
+}
