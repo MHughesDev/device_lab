@@ -353,6 +353,14 @@ Purpose: Long-term and phase-by-phase implementation plans for DeviceLab, bridgi
 | 24.6 | Phase 05 - Guardrails, artifacts, and replay | `docs/roadmap/phases/phase-05-guardrails-artifacts-replay.md` | Detailed implementation plan for cost guardrails, snapshots, forks, test artifacts, evidence persistence, and replay timelines. |
 | 24.7 | Phase 06 - Plugins and family expansion | `docs/roadmap/phases/phase-06-plugins-family-expansion.md` | Detailed implementation plan for the adapter plugin SPI, compatibility checks, and expansion across Android, Windows, macOS, iOS Simulator, real iOS, and mature browser/Linux support. |
 
+### Section 25 — Product
+
+Purpose: Product-level reference documents: end-state capabilities, feature contracts, and non-goals.
+
+| ID | Title | Path | Summary |
+| --- | --- | --- | --- |
+| 25.1 | End-state capabilities | `docs/product/end-state-capabilities.md` | Exhaustive enumeration of every feature and capability the finished DeviceLab product must have. Single source of truth for what done looks like. |
+
 ## 0.3 Retired IDs
 
 | ID | Original title | Retired date | Reason |
