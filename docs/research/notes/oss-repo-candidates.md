@@ -307,9 +307,186 @@ For each major DeviceLab subsystem, this file enumerates open source GitHub repo
 
 ---
 
+## Comparison Tables — Per Subsystem
+
+Criteria scored 1–3 (3 = best):
+
+- **Fit** — how closely the repo's architecture matches what DeviceLab needs (1 = needs heavy adaptation, 3 = drop-in or near-drop-in)
+- **Extractability** — how cleanly a subdirectory can be lifted without pulling in the whole repo as a dependency (1 = tightly coupled, 3 = module is self-contained)
+- **Maintenance** — repo health: commit frequency, open issues, release cadence (1 = stale/uncertain, 3 = actively maintained)
+- **License risk** — permissive = 3, LGPL = 2, AGPL = 1
+- **Python-native** — whether the extractable part is Python (3), has Python bindings (2), or is another language requiring a wrapper (1)
+
+**Recommendation** is the pick for DeviceLab's first integration pass.
+
+---
+
+### 1. WebRTC Streaming + Split Input Data Channel
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `aiortc/aiortc` | 3 | 3 | 3 | 3 | 3 | **15** | Pure Python asyncio — `examples/datachannel-cli` is almost exactly the split input channel pattern |
+| `mpromonet/webrtc-streamer` | 2 | 2 | 2 | 3 | 1 | **10** | C++ — needs a Python wrapper; good for the media server side but adds a native build step |
+| `livekit/livekit` | 2 | 1 | 3 | 3 | 2 | **11** | Go server + Python SDK; better fit for a managed SFU topology, overkill if DeviceLab self-routes |
+
+**Recommendation: `aiortc/aiortc`** — pure Python, BSD-3, actively maintained, `src/aiortc/` + `examples/server/` + `examples/datachannel-cli/` covers both media and split input channel with minimal adaptation. Use LiveKit as a fallback if scale demands an SFU.
+
+---
+
+### 2. MCP Server / Gateway Implementation
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `modelcontextprotocol/python-sdk` | 3 | 3 | 3 | 3 | 3 | **15** | Official SDK — this is the protocol, not just a wrapper. `src/mcp/server/` is exactly DeviceLab's MCP layer |
+| `IBM/mcp-context-forge` | 2 | 2 | 3 | 3 | 3 | **13** | Adds gateway-level RBAC, rate limiting, federation — valuable for the multi-client permission layer but heavier to extract |
+| `microsoft/playwright-mcp` | 2 | 2 | 3 | 3 | 1 | **11** | TypeScript — useful as an architecture reference and for porting the filtered tool manifest pattern, not a direct clone |
+
+**Recommendation: `modelcontextprotocol/python-sdk`** as the foundation (non-negotiable — it's the protocol implementation). Layer `IBM/mcp-context-forge`'s `mcpgateway/services/` patterns on top for the per-client RBAC and rate-limiting middleware that DeviceLab's gateway needs beyond the base SDK.
+
+---
+
+### 3. Browser Automation / Device Family Adapter
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `steel-dev/steel-browser` | 3 | 2 | 3 | 3 | 1 | **12** | TypeScript — session management architecture is the best match for DeviceLab's Browser adapter, but needs porting |
+| `browser-use/browser-use` | 3 | 3 | 3 | 3 | 3 | **15** | Python, MIT — `browser_use/browser/` + `browser_use/dom/` + `browser_use/controller/` maps directly to the three layers DeviceLab needs |
+| `microsoft/playwright-mcp` | 2 | 2 | 3 | 3 | 1 | **11** | TypeScript — best reference for tool-per-action patterns and AX snapshot format; port the patterns not the code |
+
+**Recommendation: `browser-use/browser-use`** — Python-native, MIT, actively maintained, and the three subdirectories (`browser/`, `dom/`, `controller/`) map cleanly onto DeviceLab's Browser family adapter interfaces. Reference `steel-dev/steel-browser` for session lifecycle design decisions and `playwright-mcp` for AX snapshot serialization format.
+
+---
+
+### 4. Android Device Control
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `callstackincubator/agent-device` | 3 | 3 | 2 | 3 | 1 | **12** | TypeScript/Swift — but `android-snapshot-helper` and `android-adb` map almost perfectly to DeviceLab's Android Tier 1 observation + ADB provider; port or wrap |
+| `appium/appium-uiautomator2-driver` | 3 | 2 | 3 | 3 | 1 | **12** | Node.js — most battle-tested Android AX + action execution code in OSS; `lib/commands/` is the reference for every Android action DeviceLab needs to implement |
+| `appium/appium-adb` | 3 | 3 | 3 | 3 | 1 | **13** | Node.js but wraps native `adb` binary — can call via subprocess from Python; cleanest ADB abstraction available |
+| `shamanec/GADS` | 2 | 2 | 2 | 1 | 2 | **9** | AGPL-3.0 — architecture reference only; `provider/` shows the hub/agent split but copyleft risk means don't copy code |
+
+**Recommendation:** Use `appium/appium-adb` for the ADB layer (call via subprocess or wrap in Python), `appium/appium-uiautomator2-driver`'s `lib/commands/` as the reference implementation for every Android action, and `callstackincubator/agent-device`'s `android-snapshot-helper` as the AX snapshot format reference. GADS is architecture-reference only — don't copy code.
+
+---
+
+### 5. AWS Provisioning and Lifecycle Orchestration
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `cloud-custodian/cloud-custodian` | 3 | 2 | 3 | 3 | 3 | **14** | Python, Apache — `c7n/resources/ec2.py` and `c7n/tags.py` are the most complete open-source EC2 lifecycle + tagging implementations; extracting without the policy runtime takes some work |
+| `lyft/awspricing` | 3 | 3 | 2 | 3 | 3 | **14** | Python, self-contained — drop the `awspricing/` package straight in; does one thing well (pricing lookup + cache) |
+| `cloudformation-cli-python-plugin` | 2 | 3 | 2 | 3 | 3 | **13** | Python — the progress event tracking and idempotent handler patterns are directly copyable for bootstrap; narrower scope than the others |
+
+**Recommendation:** `lyft/awspricing` for the pricing layer (self-contained, drop-in). `cloud-custodian`'s `c7n/resources/ec2.py` + `c7n/tags.py` as the reference implementation for EC2 lifecycle and tagging — extract the filter and action classes, leave the policy runtime behind. `cloudformation-cli-python-plugin` for bootstrap progress tracking patterns.
+
+---
+
+### 6. Cloud Runtime Agent (On-Device Process)
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `agentscope-ai/agentscope-runtime` | 2 | 2 | 3 | 3 | 3 | **13** | Python — execution loop and sandbox model are adaptable but it's an AI agent runtime, not a device agent; needs significant repurposing |
+| `openstf/stf` | 3 | 2 | 1 | 3 | 1 | **10** | Node.js, last major update 2017 — `lib/units/device/` is the architecturally closest thing to DeviceLab's runtime agent but the codebase is old and JS |
+
+**Recommendation:** Neither is a direct clone for this subsystem — the on-device runtime agent is genuinely novel. Use `openstf/stf`'s `lib/units/device/` and `lib/units/provider/` as the **architecture reference** for the hub↔agent communication model and the device-side command dispatch loop. Use `agentscope-runtime`'s `executor/` as the **execution model reference** for resumable commands and artifact upload. This subsystem likely needs to be written from scratch with these as guides.
+
+---
+
+### 7. Structured Observation / Accessibility Tree Extraction
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `viralmind-ai/accessibility-tree-parsers` | 3 | 3 | 2 | 3 | 3 | **14** | Python/GJS — three small self-contained scripts (linux-ax, mac-ax, win-ax) that output the exact JSON schema DeviceLab needs for Tier 1 observation |
+| `Topdu/OpenOCR` | 3 | 2 | 3 | 3 | 3 | **14** | Python — commercial-grade OCR + table extraction for Tier 2; `openocr/text_det/` + `openocr/text_rec/` + `openocr/table/` are the three modules DeviceLab needs |
+| `browser-use/browser-use` | 2 | 3 | 3 | 3 | 3 | **14** | Python — `browser_use/dom/` delta computation is the best open-source implementation of the screen-version + diff pattern; browser-specific but the concept ports to all families |
+
+**Recommendation:** `viralmind-ai/accessibility-tree-parsers` for Tier 1 desktop AX observation (all three platform scripts). `Topdu/OpenOCR` for Tier 2 OCR fallback. `browser-use/browser-use`'s `dom/history_tree_processor/` as the reference for the screen-version delta algorithm. These three together cover the full observation pyramid for non-browser families.
+
+---
+
+### 8. Recipe / Automation DSL Execution Engine
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `pypyr/pypyr` | 3 | 3 | 3 | 3 | 3 | **15** | Python, Apache — `pypyr/` is a complete step execution engine with conditionals, loops, variable substitution, and a clean plugin model for custom step types. Best fit. |
+| `monoscope-tech/testkit` | 2 | 2 | 2 | 3 | 1 | **10** | TypeScript — assertion syntax and value capture are good references but need porting; narrower than pypyr |
+| `pmarkert/hyperpotamus` | 2 | 2 | 1 | 3 | 1 | **9** | Node.js, low recent activity — capture/assertion pattern is a useful reference but pypyr covers the same ground in Python with better maintenance |
+
+**Recommendation: `pypyr/pypyr`** — the clearest win in this category. The `pypyr/` package is exactly a YAML step executor with the semantics DeviceLab needs. Clone `pypyr/steps/` as the model for DeviceLab's action step types and `pypyr/context.py` for the typed-inputs injection model. Reference `monoscope-tech/testkit` for assertion DSL syntax design only.
+
+---
+
+### 9. Cost Guardrails and AWS Pricing
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `lyft/awspricing` | 3 | 3 | 2 | 3 | 3 | **14** | Python, self-contained — pricing lookup + cache is exactly what DeviceLab needs; drop in as-is |
+| `cloud-custodian/cloud-custodian` | 2 | 2 | 3 | 3 | 3 | **13** | Python — policy enforcement patterns in `c7n/actions/core.py` are the best model for soft/hard cap enforcement; extracting them from the policy runtime takes work |
+| `project-koku/koku` | 1 | 1 | 2 | 2 | 3 | **9** | LGPL, heavy Django dependency — `koku/providers/aws/` is interesting for cost report ingestion but the framework overhead makes extraction hard; reference only |
+
+**Recommendation: `lyft/awspricing`** for the pricing data layer (same as §5). `cloud-custodian`'s enforcement action patterns as the design reference for soft/hard cap implementation. Koku is too heavy to extract from — reference the cost aggregation concepts only.
+
+---
+
+### 10. Evidence / Audit Log System
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `google/trillian` | 2 | 1 | 3 | 3 | 1 | **10** | Go — the gold-standard architecture reference for append-only cryptographic logs; extracting the Merkle tree logic into Python is meaningful work but the concepts are clear |
+| `AuditKitDev/auditkit` | 3 | 2 | 2 | 1 | 2 | **10** | AGPL — best ready-to-use implementation with Python SDK; copyleft risk is the blocker unless DeviceLab explicitly adopts it as a dependency |
+| `lulzasaur9192/agent-audit-log-examples` | 2 | 3 | 1 | 3 | 3 | **12** | Python, MIT — minimal but directly portable HMAC-SHA256 hash chain; small enough to read in full and expand into DeviceLab's full AuditEvent model |
+| `Jreamr/ai-action-ledger` | 3 | 3 | 1 | 3 | 3 | **13** | Python, MIT — purpose-built for AI agent action ledgers; small and directly relevant; maintenance status uncertain |
+
+**Recommendation: `lulzasaur9192/agent-audit-log-examples`** as the implementation seed (MIT, Python, minimal — port the `python/` HMAC-SHA256 chain directly into DeviceLab's `AuditEvent` model and expand). Use `google/trillian`'s `merkle/` as the architecture reference if Merkle inclusion proofs are needed later. Avoid AuditKit unless the AGPL is explicitly reviewed and accepted.
+
+---
+
+### 11. Secret / Credential Management
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `jaraco/keyring` | 3 | 3 | 3 | 3 | 3 | **15** | Python, MIT — this is essentially the standard library for this problem; `keyring/backends/` covers Mac/Linux/Windows as-is; `KeyringBackend` is the exact interface DeviceLab's IdentityBroker wraps |
+| `infisical/infisical` | 2 | 2 | 3 | 3 | 2 | **12** | Full platform — too large to clone from, but the Python SDK is the right integration path for users who want Vault-like secret management; use as a plugin backend target |
+| `open-source-cooperative/keyring-core` | 2 | 2 | 2 | 3 | 1 | **10** | Rust — relevant for headless Linux runtime agent scenarios where there's no desktop keyring daemon; port the `secret-service` headless pattern to Python |
+
+**Recommendation: `jaraco/keyring`** — install as a direct dependency, don't clone. It's the standard Python keyring library and covers all three platforms. `infisical/infisical`'s Python SDK is the Vault-alternative backend integration path (post-v1). `keyring-core`'s headless approach is the reference for the runtime agent on Linux EC2.
+
+---
+
+### 12. Network Inspection Proxy
+
+| Repo | Fit | Extractability | Maintenance | License risk | Python-native | Total | Notes |
+|---|---|---|---|---|---|---|---|
+| `mitmproxy/mitmproxy` | 3 | 3 | 3 | 3 | 3 | **15** | Python, MIT — designed to be embedded as a library; `mitmproxy/addons/` is the exact plugin model DeviceLab needs for flow capture; `examples/contrib/` shows embedded usage |
+| `mitmproxy/mitmproxy_rs` | 2 | 2 | 3 | 3 | 2 | **12** | Rust with Python bindings — WireGuard transparent proxy mode is the right approach for mobile/desktop families that can't have a certificate injected; use alongside mitmproxy proper |
+
+**Recommendation: `mitmproxy/mitmproxy`** — install as a direct dependency and write a DeviceLab-specific addon. Clone `mitmproxy/addons/export.py` as the template for the flow-to-artifact serializer and `examples/contrib/` for the embedded process pattern. Add `mitmproxy_rs` for transparent proxy support on non-browser device families.
+
+---
+
+## Master Recommendation Summary
+
+| Subsystem | Primary pick | Role | Secondary |
+|---|---|---|---|
+| WebRTC streaming | `aiortc/aiortc` | Clone `src/aiortc/` + examples | `livekit` if SFU scale needed |
+| MCP gateway | `modelcontextprotocol/python-sdk` | Direct dependency (foundation) | `IBM/mcp-context-forge` patterns for RBAC layer |
+| Browser adapter | `browser-use/browser-use` | Clone `browser_use/browser/` + `dom/` + `controller/` | `steel-dev/steel-browser` for session design reference |
+| Android control | `appium/appium-adb` | Subprocess wrapper | `appium-uiautomator2-driver` as action reference |
+| AWS provisioning | `lyft/awspricing` | Direct dependency (pricing) | `cloud-custodian` for EC2 lifecycle patterns |
+| Runtime agent | Write from scratch | Use STF + agentscope as architecture references | — |
+| AX tree extraction | `viralmind-ai/accessibility-tree-parsers` | Clone all three platform scripts | `OpenOCR` for Tier 2 OCR |
+| Recipe DSL | `pypyr/pypyr` | Clone `pypyr/` core | `testkit` for assertion DSL reference |
+| Cost guardrails | `lyft/awspricing` | Direct dependency (same as AWS provisioning) | `cloud-custodian` enforcement patterns |
+| Audit log | `lulzasaur9192/agent-audit-log-examples` | Port `python/` hash chain | `google/trillian` for Merkle proofs reference |
+| Secrets | `jaraco/keyring` | Direct dependency | `infisical` SDK as Vault-alternative backend |
+| Network proxy | `mitmproxy/mitmproxy` | Direct dependency + custom addon | `mitmproxy_rs` for transparent proxy |
+
+---
+
 ## Follow-up Tasks
 
-- [ ] Per-subsystem comparison table (winner selection per repo candidate)
+- [x] Per-subsystem comparison table added
 - [ ] License deep-check on AGPL/LGPL candidates before build dependency decisions
 - [ ] Spike PRs for the 3 highest-leverage integrations (MCP SDK, mitmproxy, aiortc)
 - [ ] Verify `monoscope-tech/testkit` and `Jreamr/ai-action-ledger` licenses (small repos, spot-check)
