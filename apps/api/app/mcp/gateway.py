@@ -315,3 +315,7 @@ def _run_action(
             execute_action(db, did, action, params, expected_screen_version=expected_screen_version)
         )
         return result.model_dump()
+
+
+# Register tool extensions — importing the module is enough to register @mcp.tool() decorators
+import app.mcp.tools.identity  # noqa: E402, F401
