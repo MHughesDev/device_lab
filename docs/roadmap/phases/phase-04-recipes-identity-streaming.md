@@ -9,6 +9,8 @@ updated: "2026-05-31"
 
 # Phase 04 — Recipes, Identity, and Streaming
 
+**Progress: 0%** `░░░░░░░░░░` — not started
+
 ## Objective
 
 Turn one-off MCP interactions into repeatable, auditable workflows (recipes). Allow safe secret injection without exposing values to agents or logs. Provide a low-latency human session view via WebRTC with a separate input data channel. All three land in the same phase because they are interdependent: recipes inject secrets, streaming requires session tokens, reconnect requires both.

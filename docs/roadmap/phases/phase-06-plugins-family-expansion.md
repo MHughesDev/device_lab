@@ -9,6 +9,8 @@ updated: "2026-05-31"
 
 # Phase 06 — Adapter SPI + Family Expansion
 
+**Progress: 0%** `░░░░░░░░░░` — not started
+
 ## Objective
 
 Turn DeviceLab from two working vertical slices (Linux, browser) into a durable multi-family platform. Stabilize the versioned adapter SPI so new device families can be added without touching the core. Add Android, Windows, macOS, iOS Simulator, and real iOS through clean adapter boundaries. Publish enough documentation that a third-party adapter can be built against the contract.

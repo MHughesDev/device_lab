@@ -9,6 +9,8 @@ updated: "2026-05-31"
 
 # Phase 05 — Guardrails, Artifacts, and Replay
 
+**Progress: 0%** `░░░░░░░░░░` — not started
+
 ## Objective
 
 Close the safety and accountability loop before broadening device family coverage. Every expensive lifecycle action passes through cost policy. Every test run produces retrievable artifacts. Every MCP action is replayable with full before/after evidence. This phase makes the system defensible — if something goes wrong, you can explain exactly what happened and why.
