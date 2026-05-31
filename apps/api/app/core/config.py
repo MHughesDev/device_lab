@@ -13,6 +13,8 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+VERSION = "0.1.0"
+
 
 def parse_cors(v: Any) -> list[str] | str:
     if isinstance(v, str) and not v.startswith("["):
@@ -93,6 +95,11 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
 
+    BIND_HOST: str = "127.0.0.1"
+    DANGEROUS_MODE: bool = False
+
+    AUDIT_SECRET_KEY: str = secrets.token_urlsafe(32)
+
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_ANON: int = 60   # requests per minute for unauthenticated IPs
     RATE_LIMIT_AUTH: int = 300  # requests per minute for authenticated IPs
@@ -120,7 +127,11 @@ class Settings(BaseSettings):
         self._check_default_secret(
             "FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD
         )
-
+        if self.BIND_HOST != "127.0.0.1" and self.ENVIRONMENT != "local":
+            raise ValueError(
+                "BIND_HOST must be 127.0.0.1 unless ENVIRONMENT is local. "
+                "DeviceLab is a localhost-only control plane."
+            )
         return self
 
 

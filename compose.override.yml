@@ -48,17 +48,17 @@ services:
   db:
     restart: "no"
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
   adminer:
     restart: "no"
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   backend:
     restart: "no"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -96,7 +96,7 @@ services:
   frontend:
     restart: "no"
     ports:
-      - "5173:80"
+      - "127.0.0.1:5173:80"
     build:
       context: .
       dockerfile: apps/web/Dockerfile
