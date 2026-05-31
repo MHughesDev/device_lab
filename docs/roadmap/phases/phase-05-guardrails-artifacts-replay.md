@@ -1,97 +1,245 @@
 ---
 doc_id: "24.6"
-title: "Phase 05 - Guardrails, artifacts, and replay"
+title: "Phase 05 — Guardrails, artifacts, and replay"
 section: "Roadmap"
-status: "current"
+status: "planned"
 completion: "0%"
-summary: "Detailed implementation plan for cost guardrails, snapshots, forks, test artifacts, evidence persistence, and replay timelines."
-updated: "2026-05-30"
+updated: "2026-05-31"
 ---
 
-# Phase 05 - Guardrails, Artifacts, and Replay
-<!-- derived from: queue/queue.csv Q-112 Q-113 Q-114 Q-115, docs/security/threat-model.md, docs/architecture/data-model.md -->
+# Phase 05 — Guardrails, Artifacts, and Replay
 
 ## Objective
 
-Close the safety and accountability loop before broad device expansion. Every expensive lifecycle action should be policy-checked, every test run should produce retrievable artifacts, and every MCP action should be replayable with evidence.
+Close the safety and accountability loop before broadening device family coverage. Every expensive lifecycle action passes through cost policy. Every test run produces retrievable artifacts. Every MCP action is replayable with full before/after evidence. This phase makes the system defensible — if something goes wrong, you can explain exactly what happened and why.
 
-## Scope
+---
 
-In scope:
+## OSS pulled in this phase
 
-- Cost policy model with soft and hard caps.
-- Active resource inventory and orphan cleanup suggestions.
-- Snapshot and fork lifecycle contracts.
-- Test run service with JUnit output and artifact manifest.
-- Evidence records linking MCP calls to before/after observations.
-- Replay timeline API.
-- Retention and purge behavior.
+| Repo / package | What we take | Where it lands |
+|----------------|-------------|----------------|
+| `awspricing` (already in) | Real-time pricing lookups for cost estimate accuracy | `apps/api/app/services/cost/guardrail.py` |
+| `mitmproxy` (`pip install mitmproxy`) | Embeddable intercepting proxy + custom addon for network capture | `apps/api/app/adapters/network/proxy.py` |
+| `cloud-custodian` (reference only) | Orphan detection + tag-based resource inventory patterns from `c7n/resources/ec2.py` | Ported into `apps/api/app/services/cost/inventory.py` |
+| `lulzasaur9192/agent-audit-log-examples` (already in from phase 01) | HMAC chain is now the authoritative evidence integrity mechanism | Extended in `apps/api/app/core/audit_log.py` |
 
-Out of scope:
+---
 
-- Perfect billing reconciliation for every AWS edge case.
-- Enterprise policy engine.
-- Long-term cold storage.
-- Full snapshot support for unsupported family/provider combinations.
+## Implementation tasks
 
-## Implementation Sequence
+### 1. Cost policy model
 
-1. Add cost policy model.
-   Define workspace caps, per-device estimates, action budgets, soft warning thresholds, hard blocks, and override policy.
+Files: `apps/api/app/services/cost/policy.py`, `apps/api/app/models.py`
 
-2. Wire lifecycle guard checks.
-   Before create, start, snapshot, fork, or long-running recipe execution, evaluate policy. Return explicit block/warning payloads.
+```python
+class CostPolicy(SQLModel, table=True):
+    id: str
+    workspace_id: str
+    scope: Literal["workspace", "device", "template", "family"]
+    scope_id: str | None             # device_id, template_id, or family name
+    soft_cap_usd: Decimal | None     # warn at this threshold
+    hard_cap_usd: Decimal | None     # block above this threshold
+    monthly_budget_usd: Decimal | None
+    action_cost_class_overrides: dict # {"snapshot": "expensive", "terminate": "free"}
+    override_requires_dangerous_mode: bool
+    created_at: datetime
+    updated_at: datetime
+```
 
-3. Implement pricing and inventory adapters.
-   Cache pricing lookups, list tagged resources, and compare active DeviceLab records with provider reality.
+Cost action classes: `free`, `cheap` (<$0.10), `moderate` ($0.10–$5), `expensive` (>$5), `unknown`. Every device action has a declared cost class. Unknown always triggers at least a soft warning.
 
-4. Add cleanup suggestions.
-   Identify orphaned or stale resources and propose safe cleanup actions. Dangerous cleanup requires confirmation and audit.
+### 2. Lifecycle guard checks
 
-5. Implement snapshot manager.
-   Support `snapshot_start`, `snapshot_status`, and `fork_from_snapshot` where the family adapter declares support. Unsupported paths return capability errors.
+Files: `apps/api/app/services/cost/guardrail.py`
 
-6. Build test run service.
-   Run smoke/suite definitions against a device/session, persist status, and emit JUnit plus optional Allure-compatible metadata.
+Before any of these actions: `provision`, `start`, `snapshot`, `fork`, recipe execution with `duration_class=long`:
 
-7. Create artifact manifest.
-   Store logs, screenshots, recordings, traces, recipe output, JUnit, and diagnostics behind a consistent metadata and retrieval API.
+```python
+class CostGuardrail:
+    def check(
+        action: str,
+        device: Device,
+        estimated_cost: Decimal,
+        workspace_id: str,
+    ) -> GuardrailResult:
+        ...
 
-8. Persist evidence records.
-   For every MCP action, store request metadata, policy decisions, before/after screen versions, observation delta, warnings, and artifact links.
+class GuardrailResult(BaseModel):
+    decision: Literal["allow", "warn", "block"]
+    message: str                  # human-readable explanation
+    current_spend_usd: Decimal
+    soft_cap_usd: Decimal | None
+    hard_cap_usd: Decimal | None
+    override_available: bool      # true if dangerous_mode can unblock
+    evidence_id: str
+```
 
-9. Add replay timeline.
-   Provide ordered session and recipe timelines for debugging, review, and reproducibility.
+Guardrail decisions are always persisted as `AuditEvent` entries — including `allow` decisions for expensive actions.
 
-## Data Contracts
+### 3. Active resource inventory + orphan detection
 
-| Entity | Purpose |
-|---|---|
-| `CostEstimate` | Estimated current and projected cost by device/action/workspace. |
-| `Snapshot` | Snapshot request, provider id, family support, state, source device, created time. |
-| `TestRun` | Test execution status, target device/session, suite metadata, summary. |
-| `Artifact` | File metadata, type, storage path, retention, associated run/session/evidence. |
-| `Evidence` | MCP/API action envelope with before/after observation links and policy decisions. |
+Files: `apps/api/app/services/cost/inventory.py`
 
-## Policy Behavior
+Port the tag-based resource listing pattern from `cloud-custodian`'s `c7n/resources/ec2.py`:
+- `list_tagged_resources(workspace_id)` — describe all EC2 instances tagged `DeviceLab:Workspace={id}`
+- Compare with `Device` table records — anything in AWS but not in DB = orphan candidate
+- Orphan suggestions returned via `GET /api/v1/cost/orphans`
+- Cleanup requires explicit `POST /api/v1/cost/orphans/{resource_id}/cleanup` + dangerous mode check
 
-- Soft cap: action proceeds only with visible warning and audit event.
-- Hard cap: action is blocked unless a privileged explicit override exists.
-- Unknown estimate: default to conservative warning or block depending on action cost class.
-- Cleanup: never delete untagged resources automatically.
+Pricing cache:
+```python
+class PricingCache:
+    """Wraps awspricing. Refreshes every 24h. Serializes to DB for offline use."""
+    def get_ec2_price(region, instance_type, os) -> Decimal
+    def get_snapshot_price(region, size_gb) -> Decimal
+    def get_data_transfer_price(region) -> Decimal
+```
 
-## Testing and Verification
+### 4. Snapshot manager
 
-- Unit test cost policy decisions for soft, hard, unknown, and override cases.
-- Integration-test snapshot unsupported-family error handling.
-- Validate JUnit XML output shape.
-- Test artifact manifest retrieval and retention purge.
-- Test replay timeline ordering and evidence linkage.
+Files: `apps/api/app/services/snapshots.py`, `apps/api/app/adapters/linux/snapshots.py`
 
-## Exit Criteria
+```
+POST /api/v1/devices/{id}/snapshot
+  → Snapshot { id, status: "pending", source_device_id, ... }
+  (async — EBS CreateSnapshot, tracks progress via DescribeSnapshots)
 
-- Expensive lifecycle actions pass through cost policy.
-- Snapshot/fork contract exists and works for at least one supported path or returns clear capability errors.
-- Test runs produce retrievable JUnit/artifact bundles.
-- MCP evidence can reconstruct before/after action history for a session.
+GET /api/v1/snapshots/{id}
+  → Snapshot { status: "complete"|"pending"|"failed", provider_id, size_gb, cost_estimate }
 
+POST /api/v1/snapshots/{id}/fork
+  body: { workspace_id, template_overrides }
+  → Device { id, state: "provisioning", forked_from_snapshot_id }
+
+DELETE /api/v1/snapshots/{id}
+  (requires dangerous_mode for snapshots older than 24h)
+```
+
+Unsupported families return `{ error: "CAPABILITY_UNSUPPORTED", capability: "snapshot" }`. No silent no-ops.
+
+### 5. Network proxy + capture
+
+Files: `apps/api/app/adapters/network/proxy.py`
+
+Embed `mitmproxy` as a library (not subprocess) using `mitmproxy.options.Options` and `mitmproxy.tools.dump.DumpMaster`. Write a custom `mitmproxy` addon:
+
+```python
+class DeviceLabAddon:
+    def request(self, flow: mitmproxy.http.HTTPFlow) -> None:
+        # Tag flow with device_id, session_id
+        # Check against network policy (allowlist/blocklist)
+        # Emit evidence event if request matches capture filter
+
+    def response(self, flow: mitmproxy.http.HTTPFlow) -> None:
+        # Store captured flow as artifact if enabled
+        # Inject headers/responses if recipe step requests it
+```
+
+Network proxy is opt-in per device session. Enabling it via MCP/API requires `Manage` role. Starting it for a dangerous action (e.g., credential injection test) requires `Dangerous` role.
+
+### 6. Test run service
+
+Files: `apps/api/app/services/test_runs.py`, `apps/api/app/api/routes/test_runs.py`
+
+```
+POST /api/v1/test-runs
+  body: { device_id, recipe_id | suite_yaml, collect_artifacts: bool }
+  → TestRun { id, status: "running", ... }
+
+GET /api/v1/test-runs/{id}
+  → TestRun { status, steps: [{id, status, duration_ms, artifact_refs}], summary }
+
+GET /api/v1/test-runs/{id}/artifacts
+  → [Artifact]
+
+GET /api/v1/test-runs/{id}/junit
+  → JUnit XML
+```
+
+JUnit XML output format:
+```xml
+<testsuite name="{recipe_name}" tests="{n}" failures="{f}" time="{total_s}">
+  <testcase name="{step_id}" time="{step_s}">
+    <failure message="{error}" type="{error_code}" />  <!-- if failed -->
+  </testcase>
+</testsuite>
+```
+
+Also emit Allure-compatible metadata (JSON sidecar) for teams using Allure reporting.
+
+### 7. Artifact store
+
+Files: `apps/api/app/services/artifacts.py`
+
+```python
+class Artifact(SQLModel, table=True):
+    id: str
+    workspace_id: str
+    session_id: str | None
+    run_id: str | None
+    evidence_id: str | None
+    artifact_type: str   # screenshot, log, video, junit, trace, har, recipe_draft
+    storage_path: str    # s3://devicelab-artifacts-{account_id}/...
+    size_bytes: int
+    content_type: str
+    captured_at: datetime
+    retention_days: int  # default 30
+    purge_after: datetime
+```
+
+Retention: 30 days default, configurable per workspace. Purge job runs nightly — marks `purged: true`, does not delete the row (append-only ledger). S3 lifecycle rule handles actual object deletion.
+
+Upload: runtime agent → S3 directly (presigned PUT URL from control API). Download: control API generates presigned GET URL valid for 1 hour.
+
+### 8. Evidence completeness + replay timeline
+
+Files: `apps/api/app/services/replay.py`, `apps/api/app/api/routes/replay.py`
+
+By this phase, every MCP action has an `Evidence` record (from phase 03). Now wire full replay:
+
+```
+GET /api/v1/sessions/{id}/timeline
+  → [TimelineEvent { timestamp, type, evidence_id, tool, params_summary,
+                     before_version, after_version, artifact_refs }]
+
+GET /api/v1/evidence/{id}
+  → Evidence + observation_before + observation_after + artifact_refs
+
+POST /api/v1/evidence/{id}/replay
+  → RecipeRun (replays the evidence as a recipe step against a new or same device)
+```
+
+Replay is not automatic re-execution — it generates a recipe draft from the evidence record and presents it for human review. One-click replay requires explicit confirmation.
+
+HMAC chain integrity check endpoint:
+```
+GET /api/v1/audit/verify
+  → { valid: bool, chain_length: int, first_broken_at: str | null }
+```
+
+---
+
+## Cost policy behavior matrix
+
+| Scenario | Decision |
+|----------|----------|
+| Below soft cap | Allow, no warning |
+| At or above soft cap | Allow + visible warning + audit event |
+| At or above hard cap | Block + explanation + override path |
+| Cost unknown | Conservative warn by default |
+| Override requested | Requires `DANGEROUS_MODE=true` + explicit confirm |
+| Orphan cleanup | Never automatic — always human-confirmed |
+
+---
+
+## Exit criteria
+
+- Provisioning a device above the hard cap is blocked with a clear error and remediation.
+- Soft cap warning appears in API response, MCP response, and UI for devices above threshold.
+- Snapshot creates and forks successfully for Linux; returns `CAPABILITY_UNSUPPORTED` for browser.
+- Test run produces valid JUnit XML and artifact bundle for a 3-step recipe.
+- Artifact retrieval works via presigned S3 URL within retention window.
+- Replay timeline orders all evidence records for a session correctly.
+- HMAC chain integrity verify endpoint detects a tampered audit event.
+- Orphan detection lists untracked tagged resources and cleanup requires explicit confirm.
