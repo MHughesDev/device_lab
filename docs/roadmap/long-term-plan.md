@@ -3,13 +3,13 @@ doc_id: "24.1"
 title: "DeviceLab long-term implementation plan"
 section: "Roadmap"
 status: "current"
-completion: "0%"
+completion: "67%"
 updated: "2026-05-31"
 ---
 
 # DeviceLab — Long-term Implementation Plan
 
-**Progress: 0%** — pre-code, scaffold in place
+**Progress: 67%** — phases 01–04 complete; phase 05 (guardrails, artifacts, replay) is next
 
 ## Strategic outcome
 
@@ -23,39 +23,67 @@ Three durable advantages drive every sequencing decision:
 
 ---
 
+## How to use these plans with Claude
+
+These plan files are the source of truth for AI-assisted implementation. Follow this two-step pattern:
+
+### Step 1 — Plan with Sonnet (Max mode)
+Open the relevant phase plan. Ask Claude to:
+- Clarify ambiguous tasks
+- Identify missing edge cases or integration points
+- Update the plan before implementation begins
+- Sequence tasks into parallel batches
+
+### Step 2 — Implement with Sonnet (Low/fast mode)
+Point Claude at a specific task by ID (e.g., "implement task 05-04"). The task spec provides:
+- **Files:** exact paths (new or existing)
+- **Symbols:** exact class/function signatures with types
+- **Wiring:** where to import and register
+- **Tests:** exact test names and what each asserts
+- **Do not:** explicit exclusions to prevent scope creep
+
+Each task is sized to fit in one focused agent pass and produce one clean commit.
+
+### Commit conventions
+- One task = one commit
+- Commit message format: `feat(phase-NN): <task-title>`
+- Push to `claude/friendly-cannon-7fCKA` after each commit
+
+---
+
 ## OSS dependency map
 
 Every major subsystem is backed by a specific open-source repo. This table is the source of truth — do not introduce new dependencies without an ADR.
 
 | Subsystem | Package / source | How we use it |
 |-----------|-----------------|---------------|
-| MCP server | `mcp` (`pip install mcp`) via FastMCP | The entire MCP gateway layer — server, tool registration, capability handshake, transport |
-| WebRTC streaming | `aiortc` (`pip install aiortc`) | Media stream + split input data channel; `examples/datachannel-cli` is the seed pattern |
-| Browser adapter | `browser-use` (`pip install browser-use`) | `browser_use/browser/`, `browser_use/dom/`, `browser_use/controller/` — ported to the Browser adapter SPI |
-| Android control | `uiautomator2` (`pip install uiautomator2`) + `adb` subprocess | AX tree extraction and touch/key input for Android family adapter |
-| Android AX reference | `appium/appium-uiautomator2-driver` | `lib/commands/` is the reference for every Android action; port patterns, not code |
-| AX tree scripts | `viralmind-ai/accessibility-tree-parsers` | Copy three scripts directly: `windows_ax.py`, `macos_ax.py`, `linux_ax.py` into `apps/api/app/adapters/ax/` |
-| AWS pricing | `awspricing` (`pip install awspricing`) | Pricing lookup + cache for cost estimates and guardrail calculations |
-| AWS provisioning reference | `cloud-custodian` | `c7n/resources/ec2.py` and `c7n/tags.py` — reference for EC2 lifecycle + tagging; do not import the package, port the patterns |
-| Recipe DSL | `pypyr` (`pip install pypyr`) | Recipe step executor; DeviceLab writes custom step modules on top |
-| Secrets | `keyring` (`pip install keyring`) | OS keychain backend for SecretRef storage; wraps platform keychain on Mac/Linux/Windows |
-| Network proxy | `mitmproxy` (`pip install mitmproxy`) | Embeddable proxy with custom addon for network capture and injection |
-| Audit log | `lulzasaur9192/agent-audit-log-examples` | Copy ~100 lines of HMAC-SHA256 hash-chain logic into `apps/api/app/core/audit_log.py`; do not pip install |
-| Runtime agent | Written from scratch | STF (`openstf/stf`) `provider/` + `agent/` split is the architecture reference; AgentScope execution loop is secondary reference |
-| Device FSM | `pytransitions` (`pip install transitions`) | State machine for device lifecycle (requested → … → terminated) |
+| MCP server | `mcp` via FastMCP | MCP gateway layer — server, tool registration, capability handshake, transport |
+| WebRTC streaming | `aiortc` | Media stream + split input data channel |
+| Browser adapter | `browser-use` | `browser_use/browser/`, `browser_use/dom/`, `browser_use/controller/` |
+| Android control | `uiautomator2` + `adb` subprocess | AX tree extraction and touch/key input |
+| Android AX reference | `appium/appium-uiautomator2-driver` | `lib/commands/` — reference for Android actions; port patterns, not code |
+| AX tree scripts | `viralmind-ai/accessibility-tree-parsers` | Copy `windows_ax.py`, `macos_ax.py`, `linux_ax.py` → `adapters/ax/` |
+| AWS pricing | `awspricing` | Pricing lookup + cache for cost estimates and guardrail calculations |
+| AWS provisioning reference | `cloud-custodian` | `c7n/resources/ec2.py` and `c7n/tags.py` — reference for EC2 lifecycle + tagging |
+| Recipe DSL | `pypyr` | Recipe step executor; DeviceLab writes custom step modules on top |
+| Secrets | `keyring` | OS keychain backend for SecretRef storage |
+| Network proxy | `mitmproxy` | Embeddable proxy with custom addon for network capture and injection |
+| Audit log | Written from scratch | HMAC-SHA256 hash-chain in `apps/api/app/core/audit_log.py` |
+| Runtime agent | Written from scratch | STF `provider/` + `agent/` split is the architecture reference |
+| Device FSM | `pytransitions` | State machine for device lifecycle |
 
 ---
 
 ## Phase map
 
-| Phase | Theme | Key deliverable |
-|-------|-------|-----------------|
-| 01 | Local foundation | Control plane runs safely on localhost; device FSM wired; operator has a clear path |
-| 02 | BYOC provisioning MVP | AWS preflight + Linux device full lifecycle + browser session baseline |
-| 03 | MCP observation + interaction | Agents discover capabilities, observe AX/OCR structure, execute batched semantic actions |
-| 04 | Recipes, identity, streaming | Recipes execute repeatably; secrets never leave keychain; split WebRTC stream + input channel |
-| 05 | Guardrails, artifacts, replay | Cost caps enforced; snapshots + test artifacts exist; evidence replay explains every action |
-| 06 | Adapter SPI + family expansion | Versioned plugin contract; Android, Windows, macOS, iOS Sim, real iOS added through adapters |
+| Phase | Status | Theme | Key deliverable |
+|-------|--------|-------|-----------------|
+| 01 | ✅ complete | Local foundation | Control plane runs safely on localhost; device FSM wired; operator has a clear path |
+| 02 | ✅ complete | BYOC provisioning MVP | AWS preflight + Linux device full lifecycle + browser session baseline |
+| 03 | ✅ complete | MCP observation + interaction | Agents discover capabilities, observe AX/OCR structure, execute batched semantic actions |
+| 04 | ✅ complete | Recipes, identity, streaming | Recipes execute repeatably; secrets never leave keychain; split WebRTC stream + input channel |
+| 05 | 🔜 next | Guardrails, artifacts, replay | Cost caps enforced; snapshots + test artifacts exist; evidence replay explains every action |
+| 06 | ⬜ planned | Adapter SPI + family expansion | Versioned plugin contract; Android, Windows, macOS, iOS Sim, real iOS added through adapters |
 
 ---
 
@@ -65,14 +93,15 @@ Every major subsystem is backed by a specific open-source repo. This table is th
 Local Machine (developer laptop)
 ├── Web UI (apps/web)           React 19 + Vite + TanStack
 ├── Control API (apps/api)      FastAPI + SQLModel + Postgres
-│   ├── Device Lifecycle Service    pytransitions FSM
+│   ├── Device Lifecycle Service    pytransitions FSM + cost guardrail hooks
 │   ├── Cloud Integration Layer     boto3 + awspricing
 │   ├── Observation + Action Hub    AX/OCR/screenshot/VLM tiers
 │   ├── Identity Broker             keyring + SecretRef
-│   ├── Cost Guardrail Service      awspricing + soft/hard cap FSM
+│   ├── Cost Guardrail Service      CostPolicy + awspricing + soft/hard cap FSM
 │   ├── Recipe Runner               pypyr + custom step modules
-│   ├── Artifact + Evidence Store   HMAC audit log + S3
-│   └── Adapter SPI                 versioned plugin contract
+│   ├── Artifact + Evidence Store   HMAC audit log + S3 presigned URLs
+│   ├── TestRun + Replay            JUnit XML, timeline, evidence cross-reference
+│   └── Adapter SPI                 versioned plugin contract + registry
 ├── MCP Gateway                 FastMCP (mcp SDK)
 └── Stream Gateway              aiortc (WebRTC + data channel)
 
