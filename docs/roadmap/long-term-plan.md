@@ -3,13 +3,13 @@ doc_id: "24.1"
 title: "DeviceLab long-term implementation plan"
 section: "Roadmap"
 status: "current"
-completion: "0%"
+completion: "50%"
 updated: "2026-05-31"
 ---
 
 # DeviceLab — Long-term Implementation Plan
 
-**Progress: 0%** — pre-code, scaffold in place
+**Progress: 50%** — phases 01–03 complete; phase 04 (recipes, identity, streaming) is next
 
 ## Strategic outcome
 

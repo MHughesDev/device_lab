@@ -2,7 +2,7 @@
 doc_id: "24.5"
 title: "Phase 04 — Recipes, identity, and streaming"
 section: "Roadmap"
-status: "planned"
+status: "next"
 completion: "0%"
 updated: "2026-05-31"
 ---
