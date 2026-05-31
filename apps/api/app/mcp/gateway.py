@@ -9,7 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from app.mcp.manifest import build_manifest
 from app.mcp.permissions import Role, parse_role
 
-mcp = FastMCP("DeviceLab", version="0.1.0")
+mcp = FastMCP("DeviceLab")
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import cloud_accounts, devices, health, login, private, recipes, secrets, stream, templates, users, utils, workspace
+from app.api.routes import cloud_accounts, cost, devices, health, login, private, recipes, replay, secrets, snapshots, stream, templates, test_runs, users, utils, workspace
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -15,6 +15,10 @@ api_router.include_router(devices.router)
 api_router.include_router(secrets.router)
 api_router.include_router(recipes.router)
 api_router.include_router(stream.router)
+api_router.include_router(cost.router)
+api_router.include_router(snapshots.router)
+api_router.include_router(test_runs.router)
+api_router.include_router(replay.router)
 
 if settings.ENVIRONMENT == "local":
     api_router.include_router(private.router)

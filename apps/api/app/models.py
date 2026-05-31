@@ -424,6 +424,160 @@ class StreamNegotiateResponse(SQLModel):
 
 
 # ---------------------------------------------------------------------------
+# Phase 05 — Guardrails, Artifacts, Replay
+# ---------------------------------------------------------------------------
+
+class CostPolicy(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
+    scope: str = Field(max_length=64, default="workspace")
+    scope_id: str | None = Field(default=None, max_length=255)
+    soft_cap_usd: str | None = Field(default=None, max_length=32)
+    hard_cap_usd: str | None = Field(default=None, max_length=32)
+    monthly_budget_usd: str | None = Field(default=None, max_length=32)
+    action_overrides_json: str | None = Field(default=None, sa_column=Column(Text))
+    override_requires_dangerous_mode: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    updated_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+
+
+class Snapshot(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
+    source_device_id: uuid.UUID = Field(index=True)
+    status: str = Field(max_length=64, default="pending")
+    provider_snapshot_id: str | None = Field(default=None, max_length=255)
+    size_gb: float | None = Field(default=None)
+    cost_estimate_usd: str | None = Field(default=None, max_length=32)
+    family: str = Field(max_length=64)
+    region: str = Field(max_length=64)
+    created_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    completed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+
+class Artifact(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
+    session_id: str | None = Field(default=None, max_length=128)
+    run_id: uuid.UUID | None = Field(default=None, index=True)
+    evidence_id: uuid.UUID | None = Field(default=None)
+    artifact_type: str = Field(max_length=64)
+    storage_path: str = Field(max_length=1024)
+    size_bytes: int = Field(default=0)
+    content_type: str = Field(max_length=128, default="application/octet-stream")
+    captured_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    retention_days: int = Field(default=30)
+    purge_after: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    purged: bool = Field(default=False)
+
+
+class TestRun(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
+    device_id: uuid.UUID = Field(index=True)
+    recipe_id: uuid.UUID | None = Field(default=None)
+    recipe_run_id: uuid.UUID | None = Field(default=None)
+    status: str = Field(max_length=64, default="pending")
+    collect_artifacts: bool = Field(default=True)
+    steps_json: str | None = Field(default=None, sa_column=Column(Text))
+    summary_json: str | None = Field(default=None, sa_column=Column(Text))
+    started_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    completed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+
+# --- Response-only models ---
+
+class CostPolicyPublic(SQLModel):
+    id: uuid.UUID
+    scope: str
+    scope_id: str | None
+    soft_cap_usd: str | None
+    hard_cap_usd: str | None
+    monthly_budget_usd: str | None
+    override_requires_dangerous_mode: bool
+    created_at: datetime
+
+
+class CostPolicyCreate(SQLModel):
+    scope: str = "workspace"
+    scope_id: str | None = None
+    soft_cap_usd: str | None = None
+    hard_cap_usd: str | None = None
+    monthly_budget_usd: str | None = None
+    override_requires_dangerous_mode: bool = True
+
+
+class GuardrailResult(SQLModel):
+    decision: str
+    message: str
+    current_spend_usd: str
+    soft_cap_usd: str | None
+    hard_cap_usd: str | None
+    override_available: bool
+    policy_id: str | None
+
+
+class OrphanResource(SQLModel):
+    provider_resource_id: str
+    resource_type: str
+    region: str
+    tags: dict
+    estimated_monthly_cost_usd: str
+    last_seen_at: datetime
+
+
+class SnapshotPublic(SQLModel):
+    id: uuid.UUID
+    source_device_id: uuid.UUID
+    status: str
+    provider_snapshot_id: str | None
+    size_gb: float | None
+    cost_estimate_usd: str | None
+    family: str
+    region: str
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class ArtifactPublic(SQLModel):
+    id: uuid.UUID
+    artifact_type: str
+    content_type: str
+    size_bytes: int
+    captured_at: datetime
+    purge_after: datetime
+    download_url: str | None = None
+
+
+class TestRunCreate(SQLModel):
+    device_id: uuid.UUID
+    recipe_id: uuid.UUID
+    collect_artifacts: bool = True
+
+
+class TestRunPublic(SQLModel):
+    id: uuid.UUID
+    device_id: uuid.UUID
+    recipe_id: uuid.UUID | None
+    status: str
+    steps_json: str | None
+    summary_json: str | None
+    started_at: datetime | None
+    completed_at: datetime | None
+
+
+class TimelineEvent(SQLModel):
+    timestamp: datetime
+    event_type: str
+    evidence_id: str | None
+    tool: str | None
+    params_summary: str | None
+    before_screen_version: int | None
+    after_screen_version: int | None
+    artifact_refs: list[str] = []
+
+
+# ---------------------------------------------------------------------------
 # Shared
 # ---------------------------------------------------------------------------
 
