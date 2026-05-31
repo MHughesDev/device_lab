@@ -337,6 +337,8 @@ Purpose: External discovery and provisional architecture decisions for future pr
 | 23.10 | Research notes — security observability | `docs/research/notes/security-observability-onboarding.md` | Keyring headless Linux, mTLS, OTel, SBOM, MCP onboarding deeplinks synthesis. |
 | 23.11 | Research reference index | `docs/research/reference/README.md` | Points to external registry + skim digest; explains how to track upstreams. |
 | 23.12 | External reference registry and digest | `docs/research/reference/EXTERNAL_REFERENCE.md` | Part A: slugged URL/repo registry; Part B: direct-read skim notes with retrieve dates. |
+| 23.13 | OSS repo candidates — subsystem outsourcing | `docs/research/notes/oss-repo-candidates.md` | Enumerated open source GitHub repos to clone parts of per DeviceLab subsystem, with licenses and exact directories. |
+| 23.14 | End-state capabilities (research copy) | `docs/research/end-state-capabilities.md` | Copy of doc 25.1 — full feature enumeration kept alongside research for cross-reference. |
 
 ### Section 24 — Roadmap
 
@@ -352,6 +354,14 @@ Purpose: Long-term and phase-by-phase implementation plans for DeviceLab, bridgi
 | 24.5 | Phase 04 - Recipes, identity, and streaming | `docs/roadmap/phases/phase-04-recipes-identity-streaming.md` | Detailed implementation plan for recipe execution, recording, Identity Broker secret references, MCP elicitation, and split stream/input sessions. |
 | 24.6 | Phase 05 - Guardrails, artifacts, and replay | `docs/roadmap/phases/phase-05-guardrails-artifacts-replay.md` | Detailed implementation plan for cost guardrails, snapshots, forks, test artifacts, evidence persistence, and replay timelines. |
 | 24.7 | Phase 06 - Plugins and family expansion | `docs/roadmap/phases/phase-06-plugins-family-expansion.md` | Detailed implementation plan for the adapter plugin SPI, compatibility checks, and expansion across Android, Windows, macOS, iOS Simulator, real iOS, and mature browser/Linux support. |
+
+### Section 25 — Product
+
+Purpose: Product-level reference documents: end-state capabilities, feature contracts, and non-goals.
+
+| ID | Title | Path | Summary |
+| --- | --- | --- | --- |
+| 25.1 | End-state capabilities | `docs/product/end-state-capabilities.md` | Exhaustive enumeration of every feature and capability the finished DeviceLab product must have. Single source of truth for what done looks like. |
 
 ## 0.3 Retired IDs
 

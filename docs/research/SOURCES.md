@@ -63,4 +63,35 @@ updated: "2026-05-17"
 | S049 | HashiCorp Packer CI/CD | https://developer.hashicorp.com/packer/guides/packer-on-cicd/pipelineing-builds | AMI pipeline |
 | S050 | OpenTelemetry FastAPI instrumentation | https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/fastapi/fastapi.html | Local API telemetry |
 
+| S051 | aiortc/aiortc (GitHub) | https://github.com/aiortc/aiortc | Python WebRTC + data channel — streaming + split input |
+| S052 | mpromonet/webrtc-streamer (GitHub) | https://github.com/mpromonet/webrtc-streamer | C++ WebRTC screen/device streamer |
+| S053 | livekit/livekit (GitHub) | https://github.com/livekit/livekit | Production WebRTC SFU with Python SDK |
+| S054 | IBM/mcp-context-forge (GitHub) | https://github.com/IBM/mcp-context-forge | MCP gateway with RBAC + rate limiting |
+| S055 | steel-dev/steel-browser (GitHub) | https://github.com/steel-dev/steel-browser | Browser session API for AI agents |
+| S056 | browser-use/browser-use (GitHub) | https://github.com/browser-use/browser-use | Python AI browser agent — AX tree + action execution |
+| S057 | callstackincubator/agent-device (GitHub) | https://github.com/callstackincubator/agent-device | AI agent device control CLI — iOS + Android |
+| S058 | appium/appium-uiautomator2-driver (GitHub) | https://github.com/appium/appium-uiautomator2-driver | Production Android AX tree extraction + actions |
+| S059 | appium/appium-adb (GitHub) | https://github.com/appium/appium-adb | Standalone ADB wrapper used by Appium |
+| S060 | shamanec/GADS (GitHub) | https://github.com/shamanec/GADS | Self-hosted mobile device farm — AGPL-3.0 |
+| S061 | cloud-custodian/cloud-custodian (GitHub) | https://github.com/cloud-custodian/cloud-custodian | AWS resource policy engine — EC2, tagging, cost |
+| S062 | cloudformation-cli-python-plugin (GitHub) | https://github.com/aws-cloudformation/cloudformation-cli-python-plugin | Idempotent CloudFormation stack patterns |
+| S063 | lyft/awspricing (GitHub) | https://github.com/lyft/awspricing | Python AWS Pricing API wrapper with caching |
+| S064 | agentscope-ai/agentscope-runtime (GitHub) | https://github.com/agentscope-ai/agentscope-runtime | Agent execution runtime — sandboxing + artifact upload |
+| S065 | openstf/stf (GitHub) | https://github.com/openstf/stf | Smartphone Test Farm — device agent + provider pattern |
+| S066 | viralmind-ai/accessibility-tree-parsers (GitHub) | https://github.com/viralmind-ai/ax-tree-parsers | AX tree parsers for Windows/macOS/Linux — MIT |
+| S067 | Topdu/OpenOCR (GitHub) | https://github.com/Topdu/OpenOCR | Commercial-grade OCR + document parsing toolkit |
+| S068 | pypyr/pypyr (GitHub) | https://github.com/pypyr/pypyr | Python YAML pipeline executor — step DSL |
+| S069 | monoscope-tech/testkit (GitHub) | https://github.com/apitoolkit/testkit | YAML DSL for API + browser automation testing |
+| S070 | pmarkert/hyperpotamus (GitHub) | https://github.com/pmarkert/hyperpotamus | YAML scripting engine with capture + assertions |
+| S071 | project-koku/koku (GitHub) | https://github.com/project-koku/koku | Cloud cost management — AWS ingestion + cost models |
+| S072 | google/trillian (GitHub) | https://github.com/google/trillian | Append-only cryptographic log — Certificate Transparency |
+| S073 | AuditKitDev/auditkit (GitHub) | https://github.com/AuditKitDev/auditkit | Tamper-evident audit log — SHA-256 hash chain — AGPL |
+| S074 | agent-audit-log-examples (GitHub) | https://github.com/lulzasaur9192/agent-audit-log-examples | HMAC-SHA256 hash-chained AI agent audit log — MIT |
+| S075 | Jreamr/ai-action-ledger (GitHub) | https://github.com/Jreamr/ai-action-ledger | Tamper-evident audit log for AI agent actions |
+| S076 | jaraco/keyring (GitHub) | https://github.com/jaraco/keyring | Python OS keychain library — Mac/Linux/Windows backends |
+| S077 | Infisical/infisical (GitHub) | https://github.com/Infisical/infisical | Open-source self-hostable secret management platform |
+| S078 | open-source-cooperative/keyring-core (GitHub) | https://github.com/open-source-cooperative/keyring-core | Cross-platform Rust credential library — headless Linux |
+| S079 | mitmproxy/mitmproxy (GitHub) | https://github.com/mitmproxy/mitmproxy | Intercepting HTTP/HTTPS proxy — MIT, embeddable |
+| S080 | mitmproxy/mitmproxy_rs (GitHub) | https://github.com/mitmproxy/mitmproxy_rs | Rust core — WireGuard + Local Redirect transparent proxy |
+
 _Add sources as new rows when adding research rounds. For slug cross-links and upstream licenses, see **[reference/EXTERNAL_REFERENCE.md](reference/EXTERNAL_REFERENCE.md)** Part A._
