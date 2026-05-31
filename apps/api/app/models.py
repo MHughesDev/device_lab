@@ -126,6 +126,7 @@ class Device(SQLModel, table=True):
     provider_ids_json: str | None = Field(default=None, sa_column=Column(Text))
     cost_estimate: float | None = Field(default=None)
     tags_json: str | None = Field(default=None, sa_column=Column(Text))
+    screen_version: int = Field(default=0)
     created_at: datetime = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
@@ -260,6 +261,65 @@ class WorkspaceStatus(SQLModel):
     dangerous_mode: bool
     capabilities: WorkspaceCapabilities
     cloud_accounts: list[CloudAccountPublic]
+
+
+# ---------------------------------------------------------------------------
+# Phase 03 — Evidence + screen versioning
+# ---------------------------------------------------------------------------
+
+class Evidence(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    session_id: str = Field(max_length=128)
+    device_id: uuid.UUID = Field(index=True)
+    mcp_tool: str = Field(max_length=128)
+    request_payload_json: str | None = Field(default=None, sa_column=Column(Text))
+    policy_decision: str = Field(max_length=64, default="allow")
+    before_screen_version: int = Field(default=0)
+    after_screen_version: int = Field(default=0)
+    observation_before_ref: str | None = Field(default=None, max_length=255)
+    observation_after_ref: str | None = Field(default=None, max_length=255)
+    warnings_json: str | None = Field(default=None, sa_column=Column(Text))
+    audit_event_id: uuid.UUID | None = Field(default=None)
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class ObservationEnvelope(SQLModel):
+    device_id: str
+    screen_version: int
+    tier: str  # ax | ocr | screenshot | vlm
+    structured: dict | None = None
+    screenshot_ref: str | None = None
+    delta_from_version: int | None = None
+    warnings: list[str] = []
+    observed_at: datetime
+
+
+class ActionResult(SQLModel):
+    success: bool
+    before_screen_version: int
+    after_screen_version: int
+    observation_delta: dict | None = None
+    evidence_id: str
+    warnings: list[str] = []
+    error: str | None = None
+
+
+class Step(SQLModel):
+    action: str
+    params: dict = {}
+    wait_after_ms: int = 0
+    expected_screen_version: int | None = None
+
+
+class BatchResult(SQLModel):
+    success: bool
+    steps: list[ActionResult]
+    final_screen_version: int
+    total_steps: int
+    completed_steps: int
 
 
 # ---------------------------------------------------------------------------
