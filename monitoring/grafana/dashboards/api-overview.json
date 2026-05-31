@@ -1,0 +1,26 @@
+{
+  "_blueprint": "Composer 2 implements from this structure. JSON does not support comments.",
+  "_purpose": "Exportable Grafana dashboard JSON for API overview. Per spec §26.12 item 384.",
+  "_sections": {
+    "title": "API Overview",
+    "panels": [
+      "Request Rate (req/s by endpoint)",
+      "Error Rate (5xx percentage)",
+      "Latency Percentiles (p50, p95, p99)",
+      "Active Connections",
+      "Database Query Duration",
+      "Memory Usage",
+      "CPU Usage"
+    ]
+  },
+  "_design_decisions": [
+    "Panels use Prometheus metrics from /metrics endpoint",
+    "Dashboard JSON exported from Grafana and stored here for version control",
+    "Provisioned automatically by docker-compose.monitoring.yml Grafana config"
+  ],
+  "annotations": {"list": []},
+  "title": "API Overview — Placeholder",
+  "uid": "api-overview-v1",
+  "version": 1,
+  "panels": []
+}

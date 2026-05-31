@@ -1,0 +1,33 @@
+# .github/release.yml
+# PURPOSE: Auto-generated release notes configuration. Per spec §26.12 item 364.
+# SECTIONS:
+#   - changelog: configuration for auto-generated GitHub release notes
+#   - categories: PR label → changelog section mapping
+# DESIGN DECISIONS:
+#   - Categories mirror standard release note format
+#   - Uncategorized PRs show in "Other Changes" section
+#   - Dependabot PRs shown in "Dependency Updates" section
+
+changelog:
+  exclude:
+    authors:
+      - dependabot
+  categories:
+    - title: "🚀 New Features"
+      labels:
+        - "type:feature"
+    - title: "🐛 Bug Fixes"
+      labels:
+        - "type:bug"
+    - title: "🔒 Security"
+      labels:
+        - "type:security"
+    - title: "📚 Documentation"
+      labels:
+        - "type:documentation"
+    - title: "🔧 Maintenance"
+      labels:
+        - "type:chore"
+    - title: "📦 Dependency Updates"
+      labels:
+        - "source:dependabot"

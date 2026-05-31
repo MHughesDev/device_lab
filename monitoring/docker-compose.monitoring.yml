@@ -1,0 +1,39 @@
+# monitoring/docker-compose.monitoring.yml
+# PURPOSE: Local Prometheus + Grafana observability overlay for development.
+#          Use with: docker compose -f docker-compose.yml -f monitoring/docker-compose.monitoring.yml up
+#          Per spec §26.12 item 385.
+# SECTIONS:
+#   - prometheus: scrapes /metrics from the api service; loads alerts.yml
+#   - grafana: dashboards provisioned from dashboards/api-overview.json
+# DESIGN DECISIONS:
+#   - Separate compose file: observability is optional for local dev
+#   - Grafana default admin/admin: intentional for local dev (never production)
+#   - Prometheus scrapes api:8000/metrics at 15s interval
+#   - Grafana provisioned from dashboards directory (hot-reload on change)
+
+# services:
+#   prometheus:
+#     image: prom/prometheus:latest
+#     ports: [9090:9090]
+#     volumes:
+#       - monitoring/prometheus/alerts.yml:/etc/prometheus/rules/alerts.yml
+#       - prometheus_data:/prometheus
+#     command:
+#       - --config.file=/etc/prometheus/prometheus.yml
+#       - --storage.tsdb.retention.time=7d
+#     # prometheus.yml (inline or mounted): scrape api at 15s interval
+#
+#   grafana:
+#     image: grafana/grafana:latest
+#     ports: [3001:3000]
+#     environment:
+#       - GF_SECURITY_ADMIN_PASSWORD=admin
+#       - GF_USERS_ALLOW_SIGN_UP=false
+#     volumes:
+#       - monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+#       - grafana_data:/var/lib/grafana
+#     # Provisioning config: load dashboards from mounted directory
+#
+# volumes:
+#   prometheus_data:
+#   grafana_data:

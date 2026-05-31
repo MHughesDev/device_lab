@@ -1,40 +1,74 @@
 ## Summary
+<!-- 1-2 sentences: what changed and why -->
 
-<!-- What does this PR do? 1-3 bullets. -->
+## Acceptance Criteria Verification
 
--
--
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| <!-- Criterion 1 from queue/task --> | <!-- [x] Met / [ ] Not met / [~] Partial --> | <!-- Evidence of completion --> |
+| <!-- Criterion 2 --> | | |
 
-## Queue item
+## Commands Run (with key output)
 
-<!-- Which queue row does this close? e.g. Q-101 -->
+<!-- Paste the output of each command run during validation -->
 
-Closes: <!-- Q-XXX -->
+```bash
+$ make preflight
+# Output:
 
-## Change type
+```
 
-- [ ] Feature / implementation
-- [ ] Documentation
-- [ ] Infrastructure / tooling
-- [ ] Bug fix
-- [ ] Refactor
+```bash
+$ make lint
+# Output:
 
-## Checklist
+```
 
-- [ ] Queue item acceptance criteria all met (paste them below if helpful)
-- [ ] Files changed match the queue row's `touch_files`
-- [ ] `make test` passes (or note why not applicable)
-- [ ] Docs updated if behavior changed
-- [ ] No secrets, credentials, or `.env` values committed
+```bash
+$ make fmt-check
+# Output:
 
-## Acceptance criteria (from queue row)
+```
 
-<!-- Copy verbatim from the queue item so reviewers can verify without opening the CSV. -->
+```bash
+$ make typecheck
+# Output:
 
-1.
-2.
-3.
+```
 
-## Notes / follow-up queue rows
+```bash
+$ make test  # or make test:affected
+# Output:
 
-<!-- Anything discovered during implementation that needs its own queue row. -->
+```
+
+## Files Changed
+
+| File | Change Description |
+|------|-------------------|
+| <!-- path/to/file --> | <!-- What changed and why --> |
+| <!-- path/to/file --> | <!-- What changed and why --> |
+
+## Residual Risks
+
+<!-- List any known risks, edge cases, or potential issues that remain -->
+- Risk 1: <!-- description and mitigation -->
+- Risk 2: <!-- description and mitigation -->
+
+## Follow-ups
+
+<!-- List any out-of-scope items that became new queue items or issues -->
+- [ ] <!-- Follow-up 1 -->
+- [ ] <!-- Follow-up 2 -->
+
+---
+
+## Operator Checklist (for queue PRs — human operator)
+
+- [ ] PR reviewed and approved
+- [ ] CI is green
+- [ ] PR merged to `main`
+- [ ] `make queue:archive-top` or `make queue:archive QUEUE_ID=<id>` run
+- [ ] `make queue:validate` passes
+- [ ] `make queue:pr-merge` run (if using GitHub CLI)
+- [ ] Feature branch deleted locally and on remote

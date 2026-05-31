@@ -1,0 +1,82 @@
+# .github/labels.yml
+# PURPOSE: Label definitions for issues and PRs. Used by CI or label-sync tools.
+#          Recommended per spec §26.7 item 205.
+# FORMAT: YAML array of label objects: name, color, description
+# SECTIONS:
+#   - Priority labels: P0-P3
+#   - Type labels: bug, feature, chore, queue, security, documentation
+#   - Status labels: blocked, in-progress, needs-review, stale
+#   - Scope labels: api, docs, infra, queue, security, testing, devops
+
+# Priority
+- name: "priority:P0"
+  color: "ee0701"
+  description: "Critical — production impact, immediate action required"
+- name: "priority:P1"
+  color: "e11d48"
+  description: "High — significant impact, process within 24 hours"
+- name: "priority:P2"
+  color: "f97316"
+  description: "Normal — standard queue priority"
+- name: "priority:P3"
+  color: "fbbf24"
+  description: "Low — nice to have, process when capacity allows"
+
+# Type
+- name: "type:bug"
+  color: "d73a4a"
+  description: "Something isn't working correctly"
+- name: "type:feature"
+  color: "0075ca"
+  description: "New feature or request"
+- name: "type:chore"
+  color: "e4e669"
+  description: "Maintenance, dependency upgrades, refactoring"
+- name: "type:queue"
+  color: "7057ff"
+  description: "Queue item — work destined for queue.csv"
+- name: "type:security"
+  color: "b91c1c"
+  description: "Security fix, vulnerability, or hardening"
+- name: "type:documentation"
+  color: "0075ca"
+  description: "Documentation additions or improvements"
+
+# Status
+- name: "status:blocked"
+  color: "e11d48"
+  description: "Blocked waiting for external dependency or decision"
+- name: "status:in-progress"
+  color: "22c55e"
+  description: "Actively being worked on"
+- name: "status:needs-review"
+  color: "a855f7"
+  description: "Ready for human review"
+- name: "status:stale"
+  color: "6b7280"
+  description: "No activity for 60+ days"
+
+# Scope
+- name: "scope:api"
+  color: "60a5fa"
+  description: "Changes to apps/api/"
+- name: "scope:docs"
+  color: "60a5fa"
+  description: "Changes to docs/"
+- name: "scope:infra"
+  color: "60a5fa"
+  description: "Changes to deploy/, docker, K8s, CI/CD"
+- name: "scope:queue"
+  color: "60a5fa"
+  description: "Changes to queue/ or queue lifecycle"
+- name: "scope:security"
+  color: "60a5fa"
+  description: "Security-related changes"
+- name: "scope:testing"
+  color: "60a5fa"
+  description: "Changes to tests or testing infrastructure"
+
+# Sources
+- name: "source:dependabot"
+  color: "d1fae5"
+  description: "Created by Dependabot"

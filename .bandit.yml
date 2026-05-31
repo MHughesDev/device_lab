@@ -1,0 +1,40 @@
+# .bandit.yml
+# PURPOSE: Bandit SAST (static application security testing) configuration.
+#          Defines which tests to run, severity thresholds, and exclusions.
+#          Per spec §26.12 item 378. Referenced by scripts/security-scan.sh.
+# SECTIONS:
+#   - exclude_dirs: directories to skip during scan
+#   - skips: bandit test IDs to skip with justification (use sparingly)
+#   - assert_used: configure assertion usage policy
+#   - tests: which bandit checks to enable
+# DESIGN DECISIONS:
+#   - Fail on MEDIUM severity and above (HIGH confidence) — documented in CI
+#   - Skip B101 (assert_used) in test files only — assertions are valid in tests
+#   - B104 (hardcoded_bind_all_interfaces) skipped: 0.0.0.0 is intentional in Docker
+#   - All skips require a justification comment in accepted-risks.md
+#   - Exclude test files from some checks (e.g., hardcoded passwords in fixtures)
+#   - Run with: bandit -c .bandit.yml -r apps/ packages/ skills/
+
+exclude_dirs:
+  - .venv
+  - venv
+  - dist
+  - build
+  - .eggs
+  - htmlcov
+  - apps/api/alembic/versions
+
+# Tests to skip globally (with justification in docs/security/accepted-risks.md)
+skips:
+  # B104: hardcoded_bind_all_interfaces — intentional in Docker/K8s deployments
+  - B104
+
+# Confidence and severity thresholds
+# HIGH severity + HIGH confidence = always fail
+# MEDIUM severity + HIGH confidence = fail
+# LOW severity = warn only
+assert_used:
+  skips:
+    - "*/tests/*"
+    - "*/test_*.py"
+    - "*_test.py"

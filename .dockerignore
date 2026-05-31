@@ -1,0 +1,75 @@
+# .dockerignore
+# Shrinks build context: no secrets, no VCS metadata, no dev caches, no docs/tests in API image.
+
+.git
+.gitignore
+.gitattributes
+.dockerignore
+
+# Development environment
+.venv/
+venv/
+env/
+
+# Secrets — NEVER in image
+.env
+*.key
+*.pem
+*.p12
+secrets/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Python caches
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation (not needed in image)
+docs/
+*.md
+# pyproject.toml references readme = "README.md" — must be in build context for hatchling
+!README.md
+
+# Queue (operational, not app code)
+queue/
+
+# Skills, prompts, specs (not app code)
+skills/
+prompts/
+spec/
+
+# Test files (excluded from production image)
+**/tests/
+**/test_*.py
+**/*_test.py
+
+# Node (for optional profiles not included in API image)
+node_modules/
+apps/web/
+apps/mobile/
+
+# Deployment artifacts
+deploy/
+
+# Monitoring
+monitoring/
+
+# CI/GitHub
+.github/
+
+# Scripts (not needed unless used at container entrypoint)
+scripts/
+
+# Build outputs
+dist/
+build/
+*.egg-info/

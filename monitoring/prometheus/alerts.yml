@@ -1,0 +1,32 @@
+# monitoring/prometheus/alerts.yml
+# PURPOSE: Prometheus alerting rules for API and dependencies. Per spec §26.12 item 383.
+# SECTIONS:
+#   - groups: one group per concern (api, database, infrastructure)
+#   - Each alert: name, expr, for, labels, annotations (summary, description, runbook)
+# DESIGN DECISIONS:
+#   - Alert names match runbook filenames (api-down → docs/runbooks/api-down.md)
+#   - for: short (1m) for critical, longer (5m-15m) for warnings
+#   - severity labels: critical, warning, info
+#   - All alerts have a runbook_url annotation pointing to docs/runbooks/
+
+groups:
+  - name: api
+    # CONTENT: Alert rules for the API service:
+    # - ApiDown: no scrape data for 1m (critical) → docs/runbooks/api-down.md
+    # - ApiHighErrorRate: >5% 5xx responses in 5m (warning)
+    # - ApiHighLatency: p95 > 500ms (warning)
+    # - ApiLowReadiness: /ready returning non-200 for 2m (critical)
+    rules: []
+
+  - name: database
+    # CONTENT: Alert rules for database:
+    # - DatabaseDown: no connection possible (critical) → docs/runbooks/db-failure.md
+    # - DatabaseHighConnectionPool: >80% pool utilization (warning)
+    rules: []
+
+  - name: infrastructure
+    # CONTENT: Alert rules for infrastructure:
+    # - HighMemoryUsage: >85% memory (warning)
+    # - HighCPUUsage: >90% CPU sustained (warning)
+    # - DiskSpaceLow: <20% free (warning)
+    rules: []

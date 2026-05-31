@@ -1,0 +1,104 @@
+# .gitignore
+# Excludes caches, local env files, virtualenvs, IDE noise, build outputs, and logs.
+# Track `.env.example`; never commit `.env`. `queue/audit.log` is tracked (exception below).
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment (NEVER commit real secrets)
+.env
+# .env.example is committed — do not add it here
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+nosetests.xml
+pytest-cache/
+.testmondata
+
+# Type checking
+.mypy_cache/
+.pyright/
+.dmypy.json
+dmypy.json
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+wheels/
+*.spec
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs (queue/audit.log is tracked; others are not)
+*.log
+!queue/audit.log
+
+# Initialization engine
+init-manifest.log
+# NOTE: init-manifest.json should be committed (it is the audit trail)
+# If you want to exclude it from the repo, uncomment the line below:
+# init-manifest.json
+
+# Docker (local build artifacts)
+.docker/
+
+# Secrets (never commit)
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+secret/
+
+# Node (for optional web/mobile profiles)
+node_modules/
+.npm
+*.tsbuildinfo
+
+# Temporary
+tmp/
+temp/
+.temp/
+
+# Local SQLite files (dev / tests)
+apps/api/*.db
+*.db
+docs/generated/

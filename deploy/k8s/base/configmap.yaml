@@ -1,0 +1,13 @@
+# deploy/k8s/base/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+data:
+  API_HOST: "0.0.0.0"
+  API_PORT: "8000"
+  API_DEBUG: "false"
+  API_PREFIX: "/api/v1"
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+  MULTI_TENANCY_ENABLED: "false"

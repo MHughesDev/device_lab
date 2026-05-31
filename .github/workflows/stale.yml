@@ -1,0 +1,23 @@
+# .github/workflows/stale.yml
+name: Stale
+
+on:
+  schedule:
+    - cron: "30 1 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v10
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: This issue was marked stale due to inactivity.
+          stale-pr-message: This PR was marked stale due to inactivity.
+          days-before-stale: 60
+          days-before-close: 7
