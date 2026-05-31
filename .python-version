@@ -1,0 +1,3 @@
+# .python-version
+# Pin for pyenv / asdf / mise. Align with `requires-python` in pyproject.toml.
+3.12

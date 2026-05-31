@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git -C C:/Users/Mason/Desktop/coding_projects/device_lab remote -v)"
+      "Bash(git -C C:/Users/Mason/Desktop/coding_projects/device_lab remote -v)",
+      "Bash(cp -r /tmp/template/apps .)",
+      "Bash(rm -rf apps/mobile)",
+      "Bash(cp -r /tmp/template/deploy .)",
+      "Bash(cp -r /tmp/template/monitoring .)",
+      "Bash(cp -r /tmp/template/scripts .)"
     ]
   }
 }

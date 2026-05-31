@@ -1,0 +1,17 @@
+# .github/CODEOWNERS
+# Replace @ORG/teams with your GitHub org/team slugs.
+
+* @ORG/maintainers
+queue/ @ORG/maintainers
+.cursor/ @ORG/maintainers
+AGENTS.md @ORG/maintainers
+spec/ @ORG/maintainers
+docs/ @ORG/maintainers
+apps/api/ @ORG/maintainers
+packages/ @ORG/maintainers
+deploy/ @ORG/maintainers
+.github/workflows/ @ORG/maintainers
+docker-compose.yml @ORG/maintainers
+.bandit.yml @ORG/maintainers
+trivy.yaml @ORG/maintainers
+docs/security/ @ORG/maintainers

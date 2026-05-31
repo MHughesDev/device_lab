@@ -1,0 +1,15 @@
+# deploy/k8s/overlays/staging/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: staging
+
+resources:
+  - ../../base
+
+commonLabels:
+  environment: staging
+
+images:
+  - name: template-api
+    newTag: staging

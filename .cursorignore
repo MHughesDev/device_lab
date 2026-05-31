@@ -1,0 +1,34 @@
+# .cursorignore
+# Exclude noisy paths from Cursor indexing (caches, venvs, coverage HTML, large generated JSON).
+
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.mypy_cache/
+.pyright/
+.pytest_cache/
+
+.venv/
+venv/
+env/
+
+dist/
+build/
+*.egg-info/
+
+htmlcov/
+.coverage
+coverage.xml
+
+node_modules/
+.npm/
+
+.idea/
+.vscode/
+
+.DS_Store
+
+docs/api/openapi-baseline.json
+monitoring/grafana/dashboards/api-overview.json
+
+.git/

@@ -1,0 +1,3 @@
+# .mailmap
+# Canonicalize git author lines for git shortlog / statistics.
+# Format: Name <email> Old Name <old@email>

@@ -484,9 +484,65 @@ Criteria scored 1–3 (3 = best):
 
 ---
 
+---
+
+## Final Decisions — Locked
+
+These are the definitive picks. No longer open for comparison — these are what gets built against.
+
+### Subsystem decisions
+
+| Subsystem | Decision | How to integrate | Reject |
+|---|---|---|---|
+| **WebRTC streaming** | `aiortc/aiortc` | `pip install aiortc` — wrap `src/aiortc/` peer connection + data channel classes directly; adapt `examples/server/` as the signaling endpoint | `mpromonet` (C++ build overhead), `livekit` (SFU overkill for v1) |
+| **MCP gateway** | `modelcontextprotocol/python-sdk` | `pip install mcp` — use `FastMCP` as the server base; implement per-device tool filtering in DeviceLab middleware on top | `IBM/mcp-context-forge` (too heavy to extract; steal RBAC patterns only) |
+| **Browser adapter** | `browser-use/browser-use` | `pip install browser-use` — use `browser_use/browser/` session wrapper + `browser_use/dom/` AX extraction directly; `browser_use/controller/` as action execution model | `steel-dev` (TypeScript port cost), `playwright-mcp` (TypeScript, patterns-only reference) |
+| **Android control** | `appium/appium-adb` via subprocess + `uiautomator2` Python lib | `pip install uiautomator2` (Python-native UIAutomator2 client that wraps the same server); call `adb` binary directly for device management | GADS (AGPL — no code copy), `appium-uiautomator2-driver` (Node.js — reference only) |
+| **AWS provisioning** | `boto3` directly + `lyft/awspricing` for pricing | `pip install awspricing` for pricing cache; write preflight and lifecycle against `boto3` EC2/SSM/CloudFormation directly using `cloud-custodian`'s `c7n/resources/ec2.py` as the implementation reference | `cloudformation-cli-python-plugin` (narrow scope, boto3 sufficient) |
+| **Runtime agent** | Write from scratch in Python | Thin Python process: SSM-tunneled gRPC or HTTP server on the EC2 instance; receives commands, calls platform observation/action libs, streams back results. No clone — use STF `lib/units/device/` as architecture reference only | Both candidates too divergent to extract from |
+| **AX tree extraction** | `viralmind-ai/accessibility-tree-parsers` (desktop) + `uiautomator2` (Android) + Playwright (browser) | Copy `mac-ax/`, `linux-ax/`, `win-ax/` scripts directly into a `devicelab/observation/ax/` module; they are self-contained and output the right JSON schema | `OpenOCR` deferred to Tier 2 — add only when AX proves insufficient; too large to include in MVP |
+| **Recipe DSL** | `pypyr/pypyr` | `pip install pypyr` — use as the execution engine; define DeviceLab custom step modules (`pypyr.steps.devicelab.*`) for click, type, observe, assert_screen, capture_artifact | `hyperpotamus` (stale), `testkit` (TypeScript) |
+| **Cost guardrails** | `lyft/awspricing` + write cap enforcement ourselves | `pip install awspricing`; write the soft/hard cap state machine in ~200 lines using `cloud-custodian`'s `c7n/actions/core.py` as the pattern reference | `koku` (LGPL + Django — too heavy) |
+| **Audit log** | Write from scratch — HMAC-SHA256 chain | ~100 lines of Python: each `AuditEvent` row stores `sha256(prev_hash + payload)`; use `lulzasaur9192/agent-audit-log-examples` `python/` as the seed and expand into the full `AuditEvent` SQLModel entity | `AuditKit` (AGPL), `Trillian` (Go, Merkle overkill for v1) |
+| **Secrets** | `jaraco/keyring` | `pip install keyring` — wraps OS keychain on all three platforms; `KeyringBackend` is the IdentityBroker interface; headless Linux fallback via `keyrings.alt` file backend | `infisical` (post-v1 plugin only), `keyring-core` (Rust, use for runtime agent headless Linux if needed) |
+| **Network proxy** | `mitmproxy/mitmproxy` | `pip install mitmproxy` — write a single DeviceLab addon class; spawn proxy in-process using `mitmproxy.options.Options` + `DumpMaster`; serialize flows to HAR artifact | `mitmproxy_rs` WireGuard mode deferred to post-v1 when non-browser families need transparent proxying |
+
+---
+
+### Template repo + queue system decision
+
+**Decision: Bring in the template scaffold. Gut the queue. Go straight to MVP code.**
+
+Reasoning:
+
+**Keep the template scaffold** (`MHughesDev/template`) because:
+- FastAPI + SQLModel + Postgres + Alembic is exactly the right backend stack for DeviceLab — spending days setting this up from scratch is pure waste
+- React 19 + Vite + TanStack is exactly the right frontend — same argument
+- Working auth (JWT + argon2), Docker Compose, pytest fixtures, Ruff/mypy, Biome — all done, all correct
+- The baseline app is runnable before any DeviceLab code is written — that's the fastest path to an observable system
+
+**Gut the queue** because:
+- The current queue has ~80 template-upgrade rows (Q-003, Q-100 through Q-210+) that are about keeping the TEMPLATE repository clean — not building DeviceLab
+- Executing those rows would consume weeks of agent time producing documentation cleanup artifacts, not product features
+- The queue CSV + QUEUE_INSTRUCTIONS.md governance model adds process overhead that is valuable when you have multiple agents running in parallel but is friction for a focused MVP sprint
+- The MVP product rows (Q-101/mvp-1 through Q-116/mvp-6) are the only ones that matter right now
+
+**What to do instead:**
+1. Clone the template scaffold into this repo (merge `apps/`, `Makefile`, `compose.yml`, `skills/`, `prompts/`, `scripts/`, etc. from `MHughesDev/template`)
+2. Archive ALL template-upgrade queue rows (Q-003, Q-100–Q-138, Q-200–Q-230) — mark done or drop entirely
+3. Rewrite the remaining MVP queue rows (Q-101/mvp-1 through Q-116/mvp-6) as a flat sprint backlog in a simpler format — GitHub Issues or a trimmed queue with no governance overhead
+4. Start executing Phase 1 (local control plane skeleton) immediately
+
+**The queue system itself** — keep the CSV file as a lightweight backlog tracker but stop treating the QUEUE_INSTRUCTIONS.md governance rules as blocking. For a focused MVP sprint, the right process is: pick the top item, build it, PR it, move on.
+
+---
+
 ## Follow-up Tasks
 
 - [x] Per-subsystem comparison table added
-- [ ] License deep-check on AGPL/LGPL candidates before build dependency decisions
-- [ ] Spike PRs for the 3 highest-leverage integrations (MCP SDK, mitmproxy, aiortc)
-- [ ] Verify `monoscope-tech/testkit` and `Jreamr/ai-action-ledger` licenses (small repos, spot-check)
+- [x] Final decisions locked for all 12 subsystems
+- [x] Template vs. direct build decision made
+- [ ] Bring template scaffold into this repo
+- [ ] Archive all template-upgrade queue rows; keep only mvp-1 through mvp-6 and ops-questions
+- [ ] Spike: get the template baseline running locally end-to-end (Docker Compose up, tests green)
+- [ ] Begin Phase 1 — Q-101/mvp-1: local control plane skeleton

@@ -1,0 +1,49 @@
+# .gitattributes
+# Line endings, binary detection, queue CSV merge behavior, and GitHub linguist hints.
+
+# Default
+* text=auto eol=lf
+
+# Python source
+*.py text eol=lf
+
+# Shell scripts (force LF even on Windows checkout)
+*.sh text eol=lf
+
+# Windows batch files (CRLF required for Windows cmd.exe)
+*.bat text eol=crlf
+
+# Markup and config
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+*.txt text eol=lf
+*.rst text eol=lf
+
+# Queue CSV: union merge to prevent row loss on concurrent edits
+# This means conflicts include all rows from both sides — resolve manually
+queue/*.csv merge=union text eol=lf
+
+# Binary files: no line ending normalization
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pyc binary
+
+# Linguist overrides for GitHub language detection
+# Skills and prompts are Markdown but should not dominate the language bar
+skills/** linguist-documentation=true
+prompts/** linguist-documentation=true
+docs/** linguist-documentation=true
+*.md linguist-detectable=false
