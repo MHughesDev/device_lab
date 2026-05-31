@@ -1,107 +1,250 @@
 ---
 doc_id: "24.7"
-title: "Phase 06 - Plugins and family expansion"
+title: "Phase 06 — Adapter SPI + family expansion"
 section: "Roadmap"
-status: "current"
+status: "planned"
 completion: "0%"
-summary: "Detailed implementation plan for the adapter plugin SPI, compatibility checks, and expansion across Android, Windows, macOS, iOS Simulator, real iOS, and mature browser/Linux support."
-updated: "2026-05-30"
+updated: "2026-05-31"
 ---
 
-# Phase 06 - Plugins and Family Expansion
-<!-- derived from: queue/queue.csv Q-116, spec/spec.md section 18, docs/architecture/bounded-contexts.md -->
+# Phase 06 — Adapter SPI + Family Expansion
 
 ## Objective
 
-Turn DeviceLab from two working vertical slices into a durable platform. Stabilize the adapter SPI, prove compatibility checks, and expand target device families without copying lifecycle, observation, action, cost, and evidence logic into each adapter.
+Turn DeviceLab from two working vertical slices (Linux, browser) into a durable multi-family platform. Stabilize the versioned adapter SPI so new device families can be added without touching the core. Add Android, Windows, macOS, iOS Simulator, and real iOS through clean adapter boundaries. Publish enough documentation that a third-party adapter can be built against the contract.
 
-## Scope
+---
 
-In scope:
+## OSS pulled in this phase
 
-- Versioned adapter SPI.
-- Adapter registry and compatibility validation.
-- Capability declarations feeding templates and MCP manifests.
-- Family-specific adapters for Android, Windows, macOS, iOS Simulator, and real iOS.
-- Family conformance test suite.
-- Documentation for third-party adapter authors.
+| Repo / package | What we take | Where it lands |
+|----------------|-------------|----------------|
+| `uiautomator2` (`pip install uiautomator2`) | Android AX tree dump + element interaction (full integration) | `apps/api/app/adapters/android/observation.py`, `interaction.py` |
+| `appium/appium-uiautomator2-driver` (reference) | `lib/commands/` — reference for Android action shapes, element resolution, wait conditions | Patterns ported, no code copied |
+| `viralmind-ai/accessibility-tree-parsers` (already in) | `windows_ax.py`, `macos_ax.py` for Windows UIA + macOS AX | `apps/api/app/adapters/ax/` (already copied phase 03) |
+| `aiortc` (already in) | Extend stream peer for Android touch input channel | `apps/api/app/adapters/android/stream.py` |
+| `mitmproxy` (already in) | Android network capture (requires emulator CA cert install via adb) | `apps/api/app/adapters/android/proxy.py` |
 
-Out of scope:
+---
 
-- Public plugin marketplace.
-- Hosted plugin signing service.
-- Commercial device provider partnerships.
-- Supporting every OS version permutation in v1.
+## Implementation tasks
 
-## Implementation Sequence
+### 1. Adapter SPI package
 
-1. Define adapter SPI package.
-   Create interfaces for template discovery, preflight requirements, provision, bootstrap, observe, act, stream, snapshot, artifact capture, and cleanup.
+Files: `apps/api/app/adapters/spi.py`
 
-2. Add version negotiation.
-   Each adapter declares SPI version, product version constraints, supported families, feature flags, and required provider capabilities.
+```python
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
-3. Build registry and loader.
-   Load built-in adapters first. Add extension points for local adapter packages after safety checks. Reject incompatible or duplicate adapters with explicit errors.
+SPI_VERSION = "1.0"
 
-4. Add conformance tests.
-   Every adapter must pass lifecycle, capability, observation, action, cleanup, cost tagging, and evidence contract tests. Use fakes where provider access is expensive.
+@dataclass
+class AdapterManifest:
+    spi_version: str
+    adapter_version: str
+    family: str                         # "linux" | "browser" | "android" | ...
+    display_name: str
+    capabilities: DeviceCapabilities    # from phase 03 schema
+    required_providers: list[str]       # ["aws_ec2", "ssm"] or ["local_playwright"]
+    supported_regions: list[str] | None # None = all regions
 
-5. Refactor Linux/browser into adapters.
-   Move any hardcoded family logic behind the SPI so later families follow the same route.
+class DeviceAdapter(ABC):
+    @classmethod
+    @abstractmethod
+    def manifest(cls) -> AdapterManifest: ...
 
-6. Sequence Android.
-   Support emulator or cloud Android path first, with Appium/ADB capabilities, structured observation, input, artifacts, and cleanup.
+    @abstractmethod
+    async def provision(self, device: Device, template: DeviceTemplate) -> ProviderIds: ...
 
-7. Sequence Windows.
-   Add Windows lifecycle, runtime agent install, UIA observation, PowerShell/script gates, stream, and artifacts.
+    @abstractmethod
+    async def terminate(self, device: Device) -> None: ...
 
-8. Sequence macOS and iOS Simulator.
-   Handle host constraints, Apple licensing assumptions, simulator lifecycle, accessibility permissions, and stream/input behavior.
+    @abstractmethod
+    async def observe(self, device: Device, tier: ObservationTier) -> ObservationEnvelope: ...
 
-9. Sequence real iOS.
-   Integrate AWS Device Farm or supported BYOC-compatible pathway. Keep capabilities explicit where real-device constraints differ from simulator behavior.
+    @abstractmethod
+    async def act(self, device: Device, action: Action) -> ActionResult: ...
 
-10. Publish adapter author docs.
-   Document required methods, security expectations, capability declarations, test fixtures, and failure modes.
+    # Optional — adapters declare support via capabilities
+    async def snapshot(self, device: Device) -> Snapshot: raise CapabilityUnsupportedError
+    async def stream_offer(self, device: Device) -> StreamOffer: raise CapabilityUnsupportedError
+    async def capture_artifacts(self, device: Device, run_id: str) -> list[Artifact]: ...
+    async def cleanup_orphans(self, provider_ids: list[str]) -> None: ...
+```
 
-## Adapter Capability Declaration
+Version negotiation: adapter declares `spi_version`; registry rejects `spi_version` it does not understand with a clear error listing the supported versions.
 
-| Capability | Required detail |
-|---|---|
-| Lifecycle | Supported actions, async behavior, cleanup requirements. |
-| Observation | AX/UIA/OCR/screenshot/VLM support, tier ordering, version semantics. |
-| Interaction | Semantic targets, coordinate fallback policy, keyboard/pointer/touch support. |
-| Streaming | Media protocol, input channel support, reconnect behavior. |
-| Artifacts | Logs, screenshots, recordings, traces, test outputs. |
-| Cost | Estimate fields, tags, provider inventory support. |
-| Snapshot | Supported states, forkability, provider limitations. |
-| Security | Required permissions, dangerous actions, secret injection support. |
+### 2. Adapter registry + loader
 
-## Family Sequencing
+Files: `apps/api/app/adapters/registry.py`
 
-| Family | Why this order | First proof |
-|---|---|---|
-| Linux | Baseline adapter and runtime agent proving cloud VM lifecycle. | Provision, stream, observe, terminate. |
-| Browser | High-value automation target with Playwright semantics. | Create session, semantic browser actions, artifacts. |
-| Android | Validates mobile automation path with Appium/ADB style controls. | Launch app/browser, observe, interact, collect logs. |
-| Windows | Validates UIA, Windows bootstrap, and heavier VM lifecycle. | Provision, UIA observe, stream, artifact capture. |
-| macOS | Validates Apple host constraints and accessibility permissions. | Provision supported path, observe, stream. |
-| iOS Simulator | Shares macOS constraints but adds simulator lifecycle. | Boot simulator, run app/browser, collect artifacts. |
-| Real iOS | Highest constraint and provider complexity. | Capability-limited real device session with clear unsupported paths. |
+```python
+class AdapterRegistry:
+    _adapters: dict[str, type[DeviceAdapter]] = {}
 
-## Testing and Verification
+    def register(cls, adapter_class: type[DeviceAdapter]) -> None:
+        manifest = adapter_class.manifest()
+        if manifest.spi_version not in SUPPORTED_SPI_VERSIONS:
+            raise IncompatibleAdapterError(...)
+        if manifest.family in cls._adapters:
+            raise DuplicateAdapterError(...)
+        cls._adapters[manifest.family] = adapter_class
 
-- SPI compatibility tests reject unsupported versions.
-- Built-in adapters pass shared conformance suite.
-- MCP manifest changes when adapter capabilities change.
-- Family docs list supported and unsupported actions.
-- Cleanup tests verify no provider resource leaks for each family path.
+    def get(cls, family: str) -> type[DeviceAdapter]: ...
+    def list_manifests(cls) -> list[AdapterManifest]: ...
+```
 
-## Exit Criteria
+Built-in adapters are registered at app startup. Extension point for local adapter packages: scan `DEVICELAB_ADAPTER_PATH` env var for importable Python packages with a `devicelab_adapter` entry point. Reject any adapter that fails SPI version check or duplicates a built-in family.
 
-- Linux and browser run through the same adapter SPI as later families.
-- At least one additional family passes conformance tests end to end.
-- Unsupported capabilities return structured errors rather than hidden no-ops.
-- External adapter authors can build against documented contracts.
+### 3. Refactor Linux + browser through SPI
 
+Files: `apps/api/app/adapters/linux/adapter.py` (refactor), `apps/api/app/adapters/browser/adapter.py` (refactor)
+
+Move all Linux and browser adapter code behind the `DeviceAdapter` ABC. No hardcoded family checks in core services — all family-specific behavior goes through `registry.get(device.family)`.
+
+After refactor: adding a new family requires only writing one `DeviceAdapter` subclass and registering it. No changes to device lifecycle service, MCP gateway, or cost guardrail.
+
+### 4. Conformance test suite
+
+Files: `apps/api/tests/adapters/conformance/`
+
+Every adapter (built-in and external) must pass:
+```
+test_manifest_valid              — spi_version, family, capabilities are well-formed
+test_provision_returns_ids       — returns non-empty ProviderIds
+test_terminate_cleans_up         — no tagged resources remain after terminate
+test_observe_returns_envelope    — envelope has screen_version, tier, structured data
+test_act_returns_result          — ActionResult has before/after versions + evidence_id
+test_cost_tags_present           — every provisioned resource has DeviceLab: tags
+test_capability_unsupported_raises — optional methods raise CapabilityUnsupportedError
+test_cleanup_no_leaks            — fake provider shows no leaked resources
+```
+
+Tests use fake provider backends — no real AWS calls. Each adapter ships a `FakeProvider` that the conformance suite injects.
+
+### 5. Android adapter
+
+Files: `apps/api/app/adapters/android/adapter.py`, `observation.py`, `interaction.py`, `stream.py`
+
+**Provisioning:**
+- Android Emulator on EC2 with nested virt (C8i/M8i instances per S008)
+- EC2 provision via Linux adapter → install AOSP emulator image via SSM → boot emulator → wait for `adb devices` to show device
+
+**AX observation** (`observation.py`):
+- `uiautomator2` connects to emulator via ADB (`u2.connect('emulator-5554')`)
+- `device.dump_hierarchy()` returns XML → parse into `ObservationEnvelope`
+- Port the element resolution logic from `appium-uiautomator2-driver/lib/commands/find.js` — how it resolves xpath, resource-id, content-desc, and class+text compound selectors
+
+**Interaction** (`interaction.py`):
+- `uiautomator2`: `device.click()`, `device.swipe()`, `device.send_keys()`, `device.press()`, `device.xpath().click()`
+- Port wait condition patterns from `appium-uiautomator2-driver/lib/commands/wait.js`
+
+**Stream** (`stream.py`):
+- `adb exec-out screenrecord --output-format=h264 -` piped into aiortc `VideoStreamTrack`
+- Touch input data channel → forward as `adb shell input tap/swipe/key` commands
+
+**Network proxy**:
+- Install mitmproxy CA cert via `adb push` + `adb shell` (per S037 mitmproxy Android docs)
+- Proxy runs on control machine; emulator routes through it via `adb reverse`
+
+Capability declaration:
+```python
+DeviceCapabilities(
+    observe=["ax_tree", "screenshot"],
+    interact=["click", "swipe", "type", "key", "scroll"],
+    network=["proxy", "capture"],
+    streaming=True,
+    snapshot=False,           # AVD snapshots are local only, not cloud
+)
+```
+
+### 6. Windows adapter
+
+Files: `apps/api/app/adapters/windows/adapter.py`, `observation.py`, `interaction.py`
+
+**Provisioning:** EC2 Windows Server 2022 AMI → SSM Run Command (PowerShell) → install Python runtime agent → enable accessibility permissions.
+
+**AX observation**: use `windows_ax.py` from `viralmind-ai` (already in `adapters/ax/`). This uses the Windows UIA COM interface — works for Win32 apps, WPF apps, and modern UWP apps with accessibility enabled. Feed output into `ObservationEnvelope`.
+
+**Interaction**: use `pywinauto` under the hood (the `viralmind` script already handles this). For browser interactions on Windows, fall back to browser adapter.
+
+**Stream**: RDP via `freerdp` or use the existing aiortc-based stream from the Linux adapter — Windows supports H.264 screen capture via `ffmpeg` with `gdigrab`.
+
+### 7. macOS + iOS Simulator adapter
+
+Files: `apps/api/app/adapters/macos/adapter.py`, `apps/api/app/adapters/ios_sim/adapter.py`
+
+**Provisioning (macOS):**
+- EC2 Mac Dedicated Host (mac2.metal) — 24-hour minimum allocation per S003
+- SSM bootstrap with macOS agent install (per S010)
+- Grant accessibility permissions via `tccutil` (requires SIP consideration)
+
+**AX observation (macOS)**: use `macos_ax.py` from `viralmind-ai` — AppleScript/AXUIElement extraction.
+
+**iOS Simulator:**
+- Inherits macOS host provisioning
+- `xcrun simctl boot {udid}` → wait for boot → `xcrun simctl launch {udid} {bundle_id}`
+- AX observation: `xcrun simctl accessibility` or private XPC — use `ios-sim` pattern
+- Snapshot: `xcrun simctl clone` for cloning running simulators
+
+Capability declaration for iOS Simulator explicitly notes: `snapshot: true` (xcrun clone), `streaming: true` (via QuickTime/ffmpeg grab from the macOS host).
+
+### 8. Real iOS adapter
+
+Files: `apps/api/app/adapters/ios_real/adapter.py`
+
+Two paths:
+1. **AWS Device Farm** (default) — `boto3` Device Farm API: `create_remote_access_session`, `get_remote_access_session`, `stop_remote_access_session`. Observation via screenshot API; AX not available without Appium.
+2. **Local BYOC** (advanced) — `pymobiledevice3` for USB-connected physical devices with `devicemuxerd` proxy.
+
+Capability declaration:
+```python
+DeviceCapabilities(
+    observe=["screenshot"],    # AX requires Appium layer on top
+    interact=["tap", "swipe"],
+    streaming=True,
+    snapshot=False,
+    network=["capture"],       # Device Farm provides network log
+)
+```
+
+Real iOS is the highest-constraint family. Unsupported capabilities return `CAPABILITY_UNSUPPORTED` with a `details` field explaining the constraint (e.g., "AX tree requires Appium integration — see docs/adapters/ios-appium.md").
+
+### 9. Adapter author documentation
+
+Files: `docs/adapters/spi-contract.md`, `docs/adapters/building-an-adapter.md`, `docs/adapters/fake-provider.md`
+
+Document:
+- `DeviceAdapter` required and optional methods
+- `AdapterManifest` fields and version negotiation
+- `DeviceCapabilities` fields and what each enables in MCP/UI
+- Conformance test fixture setup
+- `FakeProvider` interface for test isolation
+- Security expectations: what adapters must not do (no plaintext secrets, no unbounded resource creation, always tag resources)
+- Entry point registration for third-party packages
+
+---
+
+## Family sequencing rationale
+
+| Order | Family | Why |
+|-------|--------|-----|
+| 1 | Linux | Baseline adapter; proves SSM + EC2 + runtime agent lifecycle |
+| 2 | Browser | Proves semantic automation is not just VM management |
+| 3 | Android | First mobile family; validates uiautomator2 + ADB observation stack |
+| 4 | Windows | Validates UIA + Windows bootstrap; heavier VM lifecycle |
+| 5 | macOS | Validates Apple host constraints + dedicated host billing model |
+| 6 | iOS Simulator | Shares macOS host; adds simulator-specific lifecycle |
+| 7 | Real iOS | Highest constraint + provider complexity; Device Farm BYOC path |
+
+---
+
+## Exit criteria
+
+- Linux and browser adapters run through `DeviceAdapter` SPI — no hardcoded family checks in core.
+- All built-in adapters pass the conformance test suite with fake providers.
+- Android adapter reaches `ready` state for an emulator and returns an AX tree observation.
+- MCP manifest changes automatically when adapter capabilities change — verified by test.
+- Unsupported capabilities return typed `CAPABILITY_UNSUPPORTED` errors, never silent no-ops.
+- At least one adapter docs file exists that a third-party author can follow to build a new adapter.

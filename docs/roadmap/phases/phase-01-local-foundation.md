@@ -1,84 +1,193 @@
 ---
 doc_id: "24.2"
-title: "Phase 01 - Local foundation"
+title: "Phase 01 — Local foundation"
 section: "Roadmap"
-status: "current"
+status: "next"
 completion: "0%"
-summary: "Detailed implementation plan for making DeviceLab locally runnable, localhost-only by default, documented, and ready for product feature work."
-updated: "2026-05-30"
+updated: "2026-05-31"
 ---
 
-# Phase 01 - Local Foundation
-<!-- derived from: queue/queue.csv Q-101, docs/operations/deployment.md, spec/spec.md section 18 -->
+# Phase 01 — Local Foundation
 
 ## Objective
 
-Create a trustworthy local foundation for all later DeviceLab work. By the end of this phase, an operator should be able to start the local control plane, understand what is intentionally not implemented yet, and verify that no runtime service binds publicly by default.
+Stand up a trustworthy local control plane that any developer can clone, start, and understand. By the end of this phase, the API is running on localhost, the database migrates cleanly, the device FSM is wired, the MCP gateway skeleton exists, and the web UI shows a status screen. No cloud resources are provisioned — everything is stubs and contracts.
 
-## Scope
+---
 
-In scope:
+## OSS pulled in this phase
 
-- Local startup path for API, web UI, and MCP gateway placeholders.
-- Localhost-only defaults for control-plane services.
-- Workspace configuration shape and health/status projection.
-- Documentation that explains the current runnable path.
-- Initial validation commands and handoff conventions.
+| Repo / package | What we take | Where it lands |
+|----------------|-------------|----------------|
+| `pytransitions` (`pip install transitions`) | `Machine` class for device FSM | `apps/api/app/services/device_fsm.py` |
+| `mcp` / FastMCP (`pip install mcp`) | FastMCP server, tool registration scaffold, transport mount | `apps/api/app/mcp/gateway.py` |
+| `lulzasaur9192/agent-audit-log-examples` | ~100 lines of HMAC-SHA256 hash-chain logic (MIT, copy-not-install) | `apps/api/app/core/audit_log.py` |
 
-Out of scope:
+---
 
-- Real AWS account provisioning.
-- Real device lifecycle implementation.
-- Production packaging.
-- Device streaming beyond contract placeholders.
+## Implementation tasks
 
-## Implementation Sequence
+### 1. Baseline sanity + localhost hardening
 
-1. Inventory actual repo state.
-   Confirm whether `apps/api`, `apps/web`, `compose.yml`, `Makefile`, scripts, and MCP gateway files exist. If the repo is documentation-only, create queue rows for missing baseline import before product feature work.
+Files: `apps/api/app/core/config.py`, `compose.yml`, `.env.example`
 
-2. Define local configuration defaults.
-   Add settings for host, port, database URL, MCP mode, feature flags, and dangerous-mode enablement. Default all bind hosts to `127.0.0.1`.
+- Add `BIND_HOST` setting defaulting to `127.0.0.1` (never `0.0.0.0`).
+- Add `DANGEROUS_MODE` flag defaulting to `false`.
+- Add startup assertion: if `BIND_HOST != "127.0.0.1"` and not explicitly overridden via env, raise at import time.
+- Update `compose.yml` so API and web ports bind `127.0.0.1` by default.
+- Strip all template placeholder copy from `.env.example`; add DeviceLab-specific vars with comments.
 
-3. Expose workspace status.
-   Implement or document a minimal `/api/v1/workspace` contract returning product version, local profile, enabled capabilities, cloud account status, and health summaries.
+### 2. DeviceLab data model scaffold
 
-4. Document local startup.
-   Update operational and getting-started docs with exact commands, expected ports, prerequisites, and shutdown steps.
+Files: `apps/api/app/models.py`, `apps/api/app/alembic/versions/`
 
-5. Add safety assertions.
-   Add tests or startup checks that fail if the default host is public, dangerous mode is enabled without an explicit setting, or a required local secret is missing.
+Add SQLModel entities:
 
-6. Prepare MCP config path.
-   Define the shape of local MCP config output even if the tools are not implemented yet. This prevents first-run wizard work from inventing a second model.
+```
+Workspace          id (uuid), name, created_at, settings_json
+CloudAccount       id, workspace_id, provider, account_id, display_name,
+                   status, last_preflight_at, preflight_summary_json
+DeviceTemplate     id, family, name, description, capability_json, supported_regions
+Device             id, template_id, workspace_id, family, state, phase,
+                   provider_ids_json, cost_estimate, tags_json, created_at, updated_at
+AuditEvent         id, workspace_id, actor, action, target_type, target_id,
+                   decision, metadata_json, created_at, hash, prev_hash
+```
 
-## Data and Config Details
+Create a clean Alembic migration. Remove the template `Item` model entirely.
 
-| Item | Direction |
-|---|---|
-| Workspace identity | Single local workspace by default; multi-workspace support can be a later extension. |
-| Settings source | Environment variables with documented defaults, avoiding secrets in checked-in files. |
-| Local database | Prefer SQLite for earliest local-only bootstrap if the full Postgres baseline is absent; record any deviation in ADR/docs. |
-| Feature flags | `aws_connect`, `device_lifecycle`, `mcp_gateway`, `dangerous_mode`, `streaming`, `recipes`. |
+### 3. Device FSM
 
-## API and UI Contracts
+Files: `apps/api/app/services/device_fsm.py`
 
-- `GET /api/v1/workspace` returns local system status.
-- `GET /api/v1/health` returns liveness and dependency checks.
-- UI first screen shows setup status and next required action, not marketing content.
-- MCP config endpoint may return "not ready" status with precise missing prerequisites.
+Use `pytransitions` (`pip install transitions`):
 
-## Testing and Verification
+```
+States:
+  requested → preflight_blocked → provisioning → bootstrapping_agent
+  → ready → stopping → stopped → terminating → terminated → failed
 
-- Run the repo's docs-map check if scripts are present.
-- Run startup smoke commands for API/web once code exists.
-- Add tests for default host binding and feature flag defaults.
-- Manually inspect docs for stale template-only references.
+Transitions:
+  preflight_fail:   requested           → preflight_blocked
+  preflight_pass:   requested/blocked   → provisioning
+  provision_done:   provisioning        → bootstrapping_agent
+  agent_ready:      bootstrapping_agent → ready
+  stop:             ready               → stopping
+  stop_done:        stopping            → stopped
+  start:            stopped             → provisioning
+  terminate:        ready/stopped/...   → terminating
+  terminate_done:   terminating         → terminated
+  fail:             * (any)             → failed
+```
 
-## Exit Criteria
+The FSM persists state to `Device.state` synchronously before any async cloud call. Every transition emits an `AuditEvent` via `audit_log.append_event()`.
 
-- A new agent can follow docs from clone to local status screen.
-- No default local service binds to `0.0.0.0`.
-- Missing product implementation is represented as explicit disabled capabilities, not broken links.
-- Phase 02 can begin without inventing new local configuration concepts.
+### 4. Workspace + health endpoints
 
+Files: `apps/api/app/api/routes/workspace.py`, `apps/api/app/api/routes/health.py`
+
+```
+GET /api/v1/health
+  → { status, db_ok, version, timestamp }
+
+GET /api/v1/workspace
+  → { id, name, version, bind_host, dangerous_mode,
+      capabilities: {
+        aws_connect: bool,
+        device_lifecycle: bool,
+        mcp_gateway: bool,
+        streaming: bool,
+        recipes: bool
+      },
+      cloud_accounts: [{ id, provider, status }] }
+```
+
+All capability flags return `false` at this phase — they flip to `true` as each phase ships.
+
+### 5. MCP gateway skeleton
+
+Files: `apps/api/app/mcp/gateway.py`, `apps/api/app/mcp/tools/__init__.py`
+
+Stand up FastMCP mounted at `/mcp` via `app.mount()` in `apps/api/app/main.py`:
+
+```python
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("DeviceLab", version="0.1.0")
+
+@mcp.tool()
+def workspace_status() -> dict:
+    """Return workspace capabilities and cloud account status."""
+    ...
+
+@mcp.tool()
+def list_devices() -> list[dict]:
+    """List all devices and their current lifecycle state."""
+    ...
+```
+
+Tools return `{"status": "not_implemented", "phase": 1}` at this stage. The gateway existing and responding to capability handshake is the deliverable.
+
+### 6. Web UI — status screen
+
+Files: `apps/web/src/routes/_layout/index.tsx`, `apps/web/src/components/Workspace/StatusCard.tsx`
+
+Replace the template Items page with a DeviceLab status screen:
+- Workspace name + control plane version
+- Capability flags (aws_connect, device_lifecycle, mcp_gateway) as enabled/disabled badges
+- Cloud accounts list — empty state with "Connect AWS account" CTA (phase 02 target)
+- Health indicator (green/red dot calling `/api/v1/health`)
+
+Keep template auth, sidebar, and theme infrastructure. Only replace main content area.
+
+### 7. Audit log foundation
+
+Files: `apps/api/app/core/audit_log.py`
+
+Mob ~100 lines from `lulzasaur9192/agent-audit-log-examples` (MIT license). Core pattern:
+
+```python
+import hashlib, hmac, json
+from datetime import datetime, timezone
+
+def compute_hash(entry: dict, prev_hash: str, secret_key: bytes) -> str:
+    payload = json.dumps({**entry, "prev_hash": prev_hash}, sort_keys=True)
+    return hmac.new(secret_key, payload.encode(), hashlib.sha256).hexdigest()
+
+def append_event(db, *, actor, action, target_type, target_id, metadata, decision="allow"):
+    last = db.exec(select(AuditEvent).order_by(AuditEvent.created_at.desc()).limit(1)).first()
+    prev_hash = last.hash if last else "genesis"
+    entry = {
+        "actor": actor, "action": action,
+        "target_type": target_type, "target_id": target_id,
+        "decision": decision, "metadata": metadata,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    entry["hash"] = compute_hash(entry, prev_hash, settings.audit_secret_key)
+    entry["prev_hash"] = prev_hash
+    db.add(AuditEvent(**entry))
+    db.commit()
+```
+
+Secret key sourced from `Settings` (env var, never hardcoded).
+
+### 8. Cleanup template boilerplate
+
+- Delete `apps/api/app/api/routes/items.py`
+- Remove `Item` from `models.py`
+- Remove items router from `apps/api/app/api/main.py`
+- Update `apps/web/src/routes/` to remove Items pages
+- Keep: `User`, auth routes, sidebar shell, health route
+
+---
+
+## Exit criteria
+
+- `make dev` starts API + web UI; both bind `127.0.0.1` only — verified by socket inspection test.
+- `GET /api/v1/workspace` returns valid JSON with all capability flags `false`.
+- `GET /api/v1/health` returns `200` with `db_ok: true`.
+- `GET /mcp` responds with valid MCP capability handshake.
+- Device FSM unit tests cover all valid transitions and all invalid transition rejections.
+- Audit log unit test verifies HMAC chain integrity across 3+ chained events and detects tampering.
+- Template `Item` model and routes are gone from both API and web.
+- No service binds `0.0.0.0` in default config.
