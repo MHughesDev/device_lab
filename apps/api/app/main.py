@@ -43,3 +43,7 @@ if settings.all_cors_origins:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+from app.mcp.gateway import mcp as mcp_server  # noqa: E402
+
+app.mount("/mcp", mcp_server.streamable_http_app())
