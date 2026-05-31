@@ -88,9 +88,14 @@ class CloudAccount(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
     provider: str = Field(max_length=64, default="aws")
-    account_id: str = Field(max_length=128)
+    account_id: str = Field(max_length=128, default="")
     display_name: str = Field(max_length=255)
-    status: str = Field(max_length=64, default="unknown")
+    region: str = Field(max_length=64, default="us-east-1")
+    credential_source: str = Field(max_length=64, default="env")
+    credential_profile: str | None = Field(default=None, max_length=128)
+    credential_role_arn: str | None = Field(default=None, max_length=512)
+    status: str = Field(max_length=64, default="pending_preflight")
+    bootstrap_status: str = Field(max_length=64, default="not_started")
     last_preflight_at: datetime | None = Field(
         default=None,
         sa_type=DateTime(timezone=True),  # type: ignore
@@ -157,12 +162,76 @@ class AuditEvent(SQLModel, table=True):
 # Response schemas
 # ---------------------------------------------------------------------------
 
+class CloudAccountCreate(SQLModel):
+    provider: str = "aws"
+    display_name: str
+    region: str = "us-east-1"
+    credential_source: str = "env"
+    credential_profile: str | None = None
+    credential_role_arn: str | None = None
+
+
 class CloudAccountPublic(SQLModel):
     id: uuid.UUID
     provider: str
     account_id: str
     display_name: str
+    region: str
+    credential_source: str
     status: str
+    bootstrap_status: str
+    last_preflight_at: datetime | None
+
+
+class PreflightCheckResult(SQLModel):
+    name: str
+    status: str  # pass | warn | fail
+    severity: str  # info | warning | error
+    message: str
+    remediation: str = ""
+    evidence: str = ""
+    retryable: bool = True
+
+
+class PreflightReport(SQLModel):
+    status: str  # pass | warn | fail
+    checks: list[PreflightCheckResult]
+
+
+class BootstrapPlanResource(SQLModel):
+    resource_type: str
+    resource_id: str
+    action: str  # create | skip
+    estimated_cost: str = "$0.00/month"
+
+
+class BootstrapPlan(SQLModel):
+    account_id: str
+    region: str
+    resources: list[BootstrapPlanResource]
+    total_estimated_cost: str
+    requires_confirmation: bool = True
+
+
+class DeviceTemplatePublic(SQLModel):
+    id: uuid.UUID
+    family: str
+    name: str
+    description: str | None
+    capability_json: str | None
+    supported_regions: str | None
+
+
+class DeviceCreate(SQLModel):
+    template_id: uuid.UUID
+    cloud_account_id: uuid.UUID | None = None
+    region: str | None = None
+
+
+class DeviceLifecycleEvent(SQLModel):
+    event_type: str
+    timestamp: datetime
+    message: str
 
 
 class DevicePublic(SQLModel):
