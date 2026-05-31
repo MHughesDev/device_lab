@@ -1,9 +1,10 @@
 # apps/api — Backend AGENTS scope
 
-This is the FastAPI backend service. It is based on Tiangolo's full-stack
-FastAPI template and uses **SQLModel** (SQLAlchemy + Pydantic) on Postgres,
-JWT auth, Alembic migrations, and an email + Sentry integration. The
-auto-generated OpenAPI spec drives the typed client in `apps/web`.
+This is the DeviceLab FastAPI backend service. It uses **SQLModel**
+(SQLAlchemy + Pydantic) on Postgres, Alembic migrations, and an
+auto-generated OpenAPI spec that drives the typed client in `apps/web`.
+The DeviceLab control plane — device FSM, MCP gateway, adapters, cost
+guardrails, audit log — will be built into this app.
 
 > Root `AGENTS.md` (one level up) is authoritative. This file scopes the
 > backend conventions only. When conflicts arise between this file and the
@@ -40,8 +41,9 @@ apps/api/
 
 1. Root `AGENTS.md`
 2. This file
-3. `apps/api/README.md` (and the original Tiangolo template's backend docs)
-4. Any matching skill under `skills/backend/`
+3. `apps/api/README.md`
+4. `spec/spec.md` for any DeviceLab domain work
+5. Any matching skill under `skills/backend/`
 
 ## Conventions
 

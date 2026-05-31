@@ -1,7 +1,6 @@
 # apps/web — Frontend AGENTS scope
 
-This is the React 19 frontend, based on Tiangolo's full-stack FastAPI
-template. Stack:
+This is the DeviceLab React 19 frontend. Stack:
 
 - **React 19** + **TypeScript**
 - **Vite 7** (with `@vitejs/plugin-react-swc`)
@@ -49,7 +48,7 @@ apps/web/
 
 1. Root `AGENTS.md`
 2. This file
-3. `apps/web/README.md` (Tiangolo template's frontend docs)
+3. `apps/web/README.md`
 4. Any matching skill under `skills/frontend/`
 
 ## Conventions
