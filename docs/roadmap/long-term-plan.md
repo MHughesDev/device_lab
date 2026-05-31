@@ -9,7 +9,7 @@ updated: "2026-05-31"
 
 # DeviceLab — Long-term Implementation Plan
 
-**Progress: 67%** — phases 01–04 complete; phase 05 (guardrails, artifacts, replay) is next
+**Progress: 100%** — all six phases complete
 
 ## Strategic outcome
 
@@ -82,8 +82,8 @@ Every major subsystem is backed by a specific open-source repo. This table is th
 | 02 | ✅ complete | BYOC provisioning MVP | AWS preflight + Linux device full lifecycle + browser session baseline |
 | 03 | ✅ complete | MCP observation + interaction | Agents discover capabilities, observe AX/OCR structure, execute batched semantic actions |
 | 04 | ✅ complete | Recipes, identity, streaming | Recipes execute repeatably; secrets never leave keychain; split WebRTC stream + input channel |
-| 05 | 🔜 next | Guardrails, artifacts, replay | Cost caps enforced; snapshots + test artifacts exist; evidence replay explains every action |
-| 06 | ⬜ planned | Adapter SPI + family expansion | Versioned plugin contract; Android, Windows, macOS, iOS Sim, real iOS added through adapters |
+| 05 | ✅ complete | Guardrails, artifacts, replay | Cost caps enforced; snapshots + test artifacts exist; evidence replay explains every action |
+| 06 | ✅ complete | Adapter SPI + family expansion | Versioned plugin contract; Android, Windows, macOS, iOS Sim, real iOS added through adapters |
 
 ---
 

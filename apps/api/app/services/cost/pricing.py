@@ -34,3 +34,35 @@ def get_hourly_price(region: str, instance_type: str) -> Decimal:
 def estimate_monthly_cost(region: str, instance_type: str, hours: float = 730.0) -> Decimal:
     hourly = get_hourly_price(region, instance_type)
     return (hourly * Decimal(str(hours))).quantize(Decimal("0.01"))
+
+
+def get_ebs_snapshot_price_per_gb_month(region: str) -> Decimal:
+    """Return EBS snapshot storage price per GB-month. Falls back to $0.05 if awspricing fails."""
+    try:
+        import awspricing  # type: ignore[import]
+        offer = awspricing.offer("AmazonEC2")
+        price = offer.storage_price(
+            storage_type="Amazon EBS Snapshots to Amazon S3",
+            region=region,
+        )
+        return Decimal(str(price))
+    except Exception:
+        return Decimal("0.05")
+
+
+def get_data_transfer_price_per_gb(region: str) -> Decimal:
+    """Return outbound data transfer price per GB for the region."""
+    try:
+        import awspricing  # type: ignore[import]
+        offer = awspricing.offer("AWSDataTransfer")
+        price = offer.data_transfer_price(region=region, transfer_type="DataTransfer-Out-Bytes")
+        return Decimal(str(price))
+    except Exception:
+        return Decimal("0.09")
+
+
+def estimate_snapshot_cost(region: str, size_gb: float, retention_days: int = 30) -> Decimal:
+    """Estimate cost for keeping a snapshot for retention_days."""
+    price_per_gb_month = get_ebs_snapshot_price_per_gb_month(region)
+    months = Decimal(str(retention_days)) / Decimal("30")
+    return (price_per_gb_month * Decimal(str(size_gb)) * months).quantize(Decimal("0.01"))

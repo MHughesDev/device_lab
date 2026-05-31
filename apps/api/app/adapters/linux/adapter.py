@@ -8,6 +8,12 @@ from sqlmodel import Session
 
 from app.adapters.aws.client import AWSClient
 from app.adapters.aws.tags import device_tags
+from app.adapters.spi import (
+    AdapterManifest,
+    DeviceAdapter,
+    DeviceCapabilities,
+    SPI_VERSION,
+)
 from app.models import Device, DeviceTemplate
 
 # Ubuntu 24.04 LTS SSM-enabled AMIs by region
@@ -43,7 +49,43 @@ class LifecycleEvent:
     message: str
 
 
-class LinuxAdapter:
+class LinuxAdapter(DeviceAdapter):
+    @classmethod
+    def manifest(cls) -> AdapterManifest:
+        return AdapterManifest(
+            spi_version=SPI_VERSION,
+            adapter_version="1.0.0",
+            family="linux",
+            display_name="Linux (EC2 + SSM)",
+            capabilities=DeviceCapabilities(
+                observe=["ax_tree", "screenshot"],
+                interact=["click", "type", "key", "scroll", "raw_shell"],
+                network=["proxy", "capture"],
+                streaming=True,
+                snapshot=True,
+                dangerous_actions=["raw_shell"],
+            ),
+            required_providers=["aws_ec2", "ssm"],
+        )
+
+    async def observe(self, device: object, tier: str) -> object:
+        from app.adapters.spi import CapabilityUnsupportedError
+        if tier not in self.manifest().capabilities.observe:
+            raise CapabilityUnsupportedError(tier, "linux")
+        from app.services.observation import observe_device
+        return await observe_device(device, tier)
+
+    async def act(self, device: object, action: str, params: dict) -> object:
+        from app.adapters.spi import CapabilityUnsupportedError
+        if action not in self.manifest().capabilities.interact:
+            raise CapabilityUnsupportedError(action, "linux")
+        from app.services.interaction import act_on_device
+        return await act_on_device(device, action, params)
+
+    async def snapshot(self, device: object) -> object:
+        from app.services.snapshots import create_snapshot
+        return await create_snapshot(None, device.workspace_id, device.id)
+
     def __init__(self, client: AWSClient, region: str) -> None:
         self._client = client
         self._region = region

@@ -84,3 +84,16 @@ class TestLinuxAdapter:
         args = client.send_ssm_command.call_args
         assert args[0][0] == "i-abc123"
         assert len(args[0][1]) > 0
+
+
+def test_manifest_spi_version():
+    from app.adapters.spi import SPI_VERSION
+    assert LinuxAdapter.manifest().spi_version == SPI_VERSION
+
+
+def test_manifest_family():
+    assert LinuxAdapter.manifest().family == "linux"
+
+
+def test_manifest_snapshot_capable():
+    assert LinuxAdapter.manifest().capabilities.snapshot is True

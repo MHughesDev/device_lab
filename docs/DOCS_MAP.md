@@ -50,3 +50,6 @@ updated: "2026-05-31"
 | 24.5 | `docs/security/incident-response.md` | Incident response |
 | 25.1 | `docs/glossary.md` | Project glossary |
 | 26.1 | `docs/open-questions.md` | Open questions log |
+| 27.1 | `docs/adapters/spi-contract.md` | DeviceAdapter SPI contract |
+| 27.2 | `docs/adapters/building-an-adapter.md` | Guide to building a new adapter |
+| 27.3 | `docs/adapters/fake-provider.md` | Fake provider fixtures for conformance tests |
