@@ -9,6 +9,8 @@ updated: "2026-05-31"
 
 # Phase 01 — Local Foundation
 
+**Progress: 0%** `░░░░░░░░░░` — not started
+
 ## Objective
 
 Stand up a trustworthy local control plane that any developer can clone, start, and understand. By the end of this phase, the API is running on localhost, the database migrates cleanly, the device FSM is wired, the MCP gateway skeleton exists, and the web UI shows a status screen. No cloud resources are provisioned — everything is stubs and contracts.

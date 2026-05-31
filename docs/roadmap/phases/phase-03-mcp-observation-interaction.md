@@ -9,6 +9,8 @@ updated: "2026-05-31"
 
 # Phase 03 — MCP Observation and Interaction
 
+**Progress: 0%** `░░░░░░░░░░` — not started
+
 ## Objective
 
 Make DeviceLab genuinely useful to AI agents without relying on screenshot loops. Agents should discover only the tools valid for the selected device family and state, observe structured AX/OCR state first, execute semantic actions, and batch steps with optimistic screen-version guards. Every action produces a typed evidence envelope.

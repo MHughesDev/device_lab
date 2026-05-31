@@ -9,6 +9,8 @@ updated: "2026-05-31"
 
 # Phase 02 — BYOC Provisioning MVP
 
+**Progress: 0%** `░░░░░░░░░░` — not started
+
 ## Objective
 
 Connect to the user's AWS account, explain readiness failures clearly, bootstrap required cloud-side resources, and execute the first full Linux device lifecycle (requested → ready → terminated). Add a browser session baseline. The user should be able to go from clone to a live Linux shell session — mediated by DeviceLab — in a single documented workflow.

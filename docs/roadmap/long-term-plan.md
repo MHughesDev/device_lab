@@ -9,6 +9,8 @@ updated: "2026-05-31"
 
 # DeviceLab — Long-term Implementation Plan
 
+**Progress: 0%** — pre-code, scaffold in place
+
 ## Strategic outcome
 
 A local-first, open-source BYOC control plane that lets a human or AI agent create and operate cloud-backed device environments in their own AWS account. The end product must feel like an operational tool — predictable setup, explicit costs, safe secrets, reproducible automation, and strong evidence for every meaningful action.
