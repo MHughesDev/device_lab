@@ -1,0 +1,167 @@
+# adapter.py — iOS Simulator adapter: macOS Dedicated Host + xcrun simctl lifecycle
+from __future__ import annotations
+import json
+
+from app.adapters.spi import (
+    AdapterManifest,
+    DeviceAdapter,
+    DeviceCapabilities,
+    CapabilityUnsupportedError,
+    SPI_VERSION,
+)
+
+
+class IOSSimulatorAdapter(DeviceAdapter):
+    """Inherits macOS Dedicated Host; adds simulator-specific lifecycle via xcrun simctl."""
+
+    @classmethod
+    def manifest(cls) -> AdapterManifest:
+        return AdapterManifest(
+            spi_version=SPI_VERSION,
+            adapter_version="1.0.0",
+            family="ios_sim",
+            display_name="iOS Simulator (macOS EC2 + xcrun simctl)",
+            capabilities=DeviceCapabilities(
+                observe=["screenshot"],
+                interact=["tap", "swipe", "type", "key"],
+                network=[],
+                streaming=True,
+                snapshot=True,
+            ),
+            required_providers=["aws_ec2_dedicated_host", "ssm"],
+        )
+
+    async def provision(self, device: object, template: object) -> dict:
+        """Provision macOS host, create and boot iOS Simulator via xcrun simctl."""
+        from app.adapters.macos.adapter import MacOSAdapter
+        macos = MacOSAdapter()
+        ids = await macos.provision(device, template)
+        instance_id = ids["instance_id"]
+        region = ids.get("region", "us-east-1")
+
+        import boto3, time
+        ssm = boto3.client("ssm", region_name=region)
+        resp = ssm.send_command(
+            InstanceIds=[instance_id],
+            DocumentName="AWS-RunShellScript",
+            Parameters={"commands": [
+                "xcrun simctl create devicelab-sim 'iPhone 15' 'iOS17.0' 2>/tmp/simctl.log",
+                "UDID=$(xcrun simctl list devices | grep devicelab-sim | grep -o '[A-Z0-9-]*' | head -1)",
+                "xcrun simctl boot $UDID",
+                "echo $UDID > /tmp/sim_udid",
+            ]},
+        )
+        command_id = resp["Command"]["CommandId"]
+        for _ in range(60):
+            time.sleep(2)
+            output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
+            if output["Status"] == "Success":
+                break
+
+        ids["sim_udid"] = "pending"
+        return ids
+
+    async def terminate(self, device: object) -> None:
+        """Shutdown and delete simulator, then terminate macOS host."""
+        if not getattr(device, "provider_ids_json", None):
+            return
+        ids = json.loads(device.provider_ids_json)  # type: ignore[attr-defined]
+        instance_id = ids.get("instance_id")
+        sim_udid = ids.get("sim_udid", "")
+        region = ids.get("region", "us-east-1")
+
+        if instance_id and sim_udid and sim_udid != "pending":
+            import boto3
+            ssm = boto3.client("ssm", region_name=region)
+            ssm.send_command(
+                InstanceIds=[instance_id],
+                DocumentName="AWS-RunShellScript",
+                Parameters={"commands": [
+                    f"xcrun simctl shutdown {sim_udid}",
+                    f"xcrun simctl delete {sim_udid}",
+                ]},
+            )
+
+        if instance_id:
+            import boto3
+            ec2 = boto3.client("ec2", region_name=region)
+            ec2.terminate_instances(InstanceIds=[instance_id])
+
+    async def observe(self, device: object, tier: str) -> object:
+        if tier not in self.manifest().capabilities.observe:
+            raise CapabilityUnsupportedError(tier, "ios_sim")
+        ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
+        instance_id = ids.get("instance_id", "")
+        sim_udid = ids.get("sim_udid", "")
+        region = ids.get("region", "us-east-1")
+
+        import boto3
+        from datetime import UTC, datetime
+        from app.models import ObservationEnvelope
+        ssm = boto3.client("ssm", region_name=region)
+        ssm.send_command(
+            InstanceIds=[instance_id],
+            DocumentName="AWS-RunShellScript",
+            Parameters={"commands": [
+                f"xcrun simctl io {sim_udid} screenshot /tmp/sim_screenshot.png",
+                "base64 /tmp/sim_screenshot.png",
+            ]},
+        )
+        return ObservationEnvelope(
+            device_id=str(getattr(device, "id", "")),
+            screen_version=getattr(device, "screen_version", 0),
+            tier="screenshot",
+            screenshot_ref="",
+            observed_at=datetime.now(UTC),
+        )
+
+    async def act(self, device: object, action: str, params: dict) -> object:
+        if action not in self.manifest().capabilities.interact:
+            raise CapabilityUnsupportedError(action, "ios_sim")
+        ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
+        instance_id = ids.get("instance_id", "")
+        sim_udid = ids.get("sim_udid", "")
+        region = ids.get("region", "us-east-1")
+
+        cmd = _build_simctl_command(action, sim_udid, params)
+        import boto3
+        ssm = boto3.client("ssm", region_name=region)
+        ssm.send_command(
+            InstanceIds=[instance_id],
+            DocumentName="AWS-RunShellScript",
+            Parameters={"commands": [cmd]},
+        )
+        return {"success": True, "action": action}
+
+    async def snapshot(self, device: object) -> object:
+        """Clone simulator via xcrun simctl clone."""
+        ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
+        instance_id = ids.get("instance_id", "")
+        sim_udid = ids.get("sim_udid", "")
+        region = ids.get("region", "us-east-1")
+        from datetime import UTC, datetime
+        snap_name = f"devicelab-snap-{int(datetime.now(UTC).timestamp())}"
+
+        import boto3
+        ssm = boto3.client("ssm", region_name=region)
+        ssm.send_command(
+            InstanceIds=[instance_id],
+            DocumentName="AWS-RunShellScript",
+            Parameters={"commands": [f"xcrun simctl clone {sim_udid} {snap_name}"]},
+        )
+        return {"snapshot_name": snap_name}
+
+
+def _build_simctl_command(action: str, sim_udid: str, params: dict) -> str:
+    if action == "tap":
+        x, y = params.get("x", 0), params.get("y", 0)
+        return f"xcrun simctl io {sim_udid} sendkey tap {x} {y}"
+    elif action == "swipe":
+        return (f"xcrun simctl io {sim_udid} sendkey swipe "
+                f"{params.get('start_x',0)} {params.get('start_y',0)} "
+                f"{params.get('end_x',0)} {params.get('end_y',0)}")
+    elif action == "type":
+        return f"xcrun simctl io {sim_udid} sendkey type {params.get('text','')}"
+    elif action == "key":
+        return f"xcrun simctl io {sim_udid} sendkey {params.get('keycode','')}"
+    return "echo noop"

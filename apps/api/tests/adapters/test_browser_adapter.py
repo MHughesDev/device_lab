@@ -63,3 +63,16 @@ class TestBrowserAdapter:
         _sessions[str(device.id)] = session
         assert adapter.get_session(str(device.id)) is session
         del _sessions[str(device.id)]
+
+
+def test_manifest_spi_version():
+    from app.adapters.spi import SPI_VERSION
+    assert BrowserAdapter.manifest().spi_version == SPI_VERSION
+
+
+def test_manifest_family():
+    assert BrowserAdapter.manifest().family == "browser"
+
+
+def test_manifest_snapshot_not_capable():
+    assert BrowserAdapter.manifest().capabilities.snapshot is False
