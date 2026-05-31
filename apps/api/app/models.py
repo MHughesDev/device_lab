@@ -323,6 +323,107 @@ class BatchResult(SQLModel):
 
 
 # ---------------------------------------------------------------------------
+# Phase 04 — Recipes, Identity, Streaming
+# ---------------------------------------------------------------------------
+
+class SecretRef(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
+    name: str = Field(max_length=255, unique=True)        # e.g. "workspace/demo-creds"
+    description: str = Field(max_length=1024, default="")
+    backend: str = Field(max_length=64, default="keyring")  # "keyring" | "env"
+    keyring_service: str = Field(max_length=255)
+    keyring_username: str = Field(max_length=255)
+    created_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))  # type: ignore
+    last_used_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))  # type: ignore
+
+
+class Recipe(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
+    name: str = Field(max_length=255)
+    version: int = Field(default=1)
+    families_json: str = Field(default="[]", sa_column=Column(Text))  # JSON list of family strings
+    yaml_content: str = Field(sa_column=Column(Text))
+    created_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))  # type: ignore
+    updated_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))  # type: ignore
+    runs: list["RecipeRun"] = Relationship(back_populates="recipe")
+
+
+class RecipeRun(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    recipe_id: uuid.UUID = Field(foreign_key="recipe.id", index=True)
+    device_id: uuid.UUID = Field(index=True)
+    status: str = Field(max_length=64, default="pending")  # pending|running|paused|complete|failed
+    current_step_index: int = Field(default=0)
+    steps_json: str | None = Field(default=None, sa_column=Column(Text))   # JSON array of per-step status
+    started_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))  # type: ignore
+    completed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))  # type: ignore
+    recipe: Recipe | None = Relationship(back_populates="runs")
+
+
+class StreamSession(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    device_id: uuid.UUID = Field(index=True)
+    session_token: str = Field(max_length=512)
+    status: str = Field(max_length=64, default="negotiating")  # negotiating|active|closed
+    client_id: str = Field(max_length=255, default="")
+    created_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))  # type: ignore
+    expires_at: datetime = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))  # type: ignore
+
+
+class SecretRefCreate(SQLModel):
+    name: str
+    value: str           # only at creation; never stored in DB
+    description: str = ""
+    backend: str = "keyring"
+
+
+class SecretRefPublic(SQLModel):
+    id: uuid.UUID
+    name: str
+    description: str
+    backend: str
+    created_at: datetime
+    last_used_at: datetime | None
+
+
+class RecipePublic(SQLModel):
+    id: uuid.UUID
+    name: str
+    version: int
+    families_json: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecipeCreate(SQLModel):
+    name: str
+    yaml_content: str
+
+
+class RecipeRunPublic(SQLModel):
+    id: uuid.UUID
+    recipe_id: uuid.UUID
+    device_id: uuid.UUID
+    status: str
+    current_step_index: int
+    started_at: datetime | None
+    completed_at: datetime | None
+
+
+class StreamNegotiateRequest(SQLModel):
+    sdp_offer: str
+    client_id: str
+
+
+class StreamNegotiateResponse(SQLModel):
+    sdp_answer: str
+    session_token: str
+    input_channel_id: str
+
+
+# ---------------------------------------------------------------------------
 # Shared
 # ---------------------------------------------------------------------------
 
