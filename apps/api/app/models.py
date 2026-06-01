@@ -121,6 +121,7 @@ class Device(SQLModel, table=True):
     template_id: uuid.UUID | None = Field(default=None, foreign_key="devicetemplate.id")
     workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
     family: str = Field(max_length=64)
+    location: str = Field(max_length=32, default="cloud")
     state: str = Field(max_length=64, default="requested")
     phase: str | None = Field(default=None, max_length=64)
     provider_ids_json: str | None = Field(default=None, sa_column=Column(Text))
