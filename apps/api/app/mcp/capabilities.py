@@ -115,16 +115,6 @@ IOS_SIM_CAPABILITIES = DeviceCapabilities(
     streaming=True,
 )
 
-IOS_REAL_CAPABILITIES = DeviceCapabilities(
-    lifecycle=LifecycleCapabilities(provision=True, terminate=True),
-    observe=ObserveCapabilities(screenshot=True),
-    interact=InteractCapabilities(click=True, scroll=True),
-    network=NetworkCapabilities(capture=True),
-    # Device Farm records automatically; no agent-side start/stop needed
-    screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
-    streaming=True,
-)
-
 BROWSER_CAPABILITIES = DeviceCapabilities(
     lifecycle=LifecycleCapabilities(provision=True, terminate=True),
     observe=ObserveCapabilities(ax_tree=True, screenshot=True),
@@ -139,7 +129,6 @@ FAMILY_CAPABILITIES: dict[str, DeviceCapabilities] = {
     "windows": WINDOWS_CAPABILITIES,
     "android": ANDROID_CAPABILITIES,
     "ios_sim": IOS_SIM_CAPABILITIES,
-    "ios_real": IOS_REAL_CAPABILITIES,
     "browser": BROWSER_CAPABILITIES,
 }
 

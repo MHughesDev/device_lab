@@ -11,7 +11,7 @@ def start_recording(device_id: str) -> dict:
 
     Returns recording_id to pass to stop_recording. Only one recording is
     allowed per device at a time. Supported families: linux, macos, windows,
-    android, ios_sim, ios_real, browser.
+    android, ios_sim, browser.
     """
     import asyncio
     import uuid

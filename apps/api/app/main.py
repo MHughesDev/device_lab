@@ -58,7 +58,6 @@ async def register_adapters() -> None:
     from app.adapters.windows.adapter import WindowsAdapter
     from app.adapters.macos.adapter import MacOSAdapter
     from app.adapters.ios_sim.adapter import IOSSimulatorAdapter
-    from app.adapters.ios_real.adapter import IOSRealAdapter
 
     AdapterRegistry.reset()
     for adapter_class in [
@@ -68,6 +67,5 @@ async def register_adapters() -> None:
         WindowsAdapter,
         MacOSAdapter,
         IOSSimulatorAdapter,
-        IOSRealAdapter,
     ]:
         AdapterRegistry.register(adapter_class)
