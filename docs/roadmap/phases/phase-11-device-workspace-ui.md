@@ -75,7 +75,7 @@ vocabulary aligned to D-1 reframes:
 | a | **MCP server on / off** + copy connection string + role scope (Observe/Test/Operate/Admin) | `mcp_exposed` toggle; per-device manifest | 08 |
 | b | **Attach / Detach interactive session** ("stateful" → live display+audio+input) | `display/attach`·`detach` | 09-14 |
 | c | **Rename** | `PATCH device.name` | 11-13 |
-| d | **Capture environment manifest** (save current installed state → manifest registry) | `capture_manifest` + registry create | 10 |
+| d | **Capture environment manifest** (saves the *environment* — software/config — **not** in-app data or databases; label this clearly) | `capture_manifest` + registry create | 10 |
 | e | **Restart / Reboot** | lifecycle | existing |
 | f | **Stop / Terminate** | lifecycle | existing |
 | g | **Start / Stop screen recording** (artifact to S3 / local) | recording tools | existing |

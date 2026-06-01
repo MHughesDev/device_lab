@@ -111,9 +111,21 @@ no-plaintext-secrets invariant).
 
 ### D-6. Naming
 
-Devices **and** snapshots get an optional user-supplied `name` (≤120 chars). It is the tab title
-and the label in the snapshot/existing-device picker. Absent a name, fall back to
-`<family> · <id8>`. New `name` columns on `Device` and `Snapshot` (Alembic migrations).
+Devices **and** manifests get an optional user-supplied `name` (≤120 chars). It is the tab title
+and the label in the manifest/existing-device picker. Absent a name, fall back to
+`<family> · <id8>`. New `name` columns on `Device` and `DeviceManifest` (Alembic migrations).
+
+---
+
+### D-7. Manifests capture the recipe, not the data (decided 2026-06-01)
+
+A `DeviceManifest` records installed software, env, and config — **not** in-application data,
+on-device databases, user files, or session state (`docker build`, not `docker commit`). This
+keeps manifests portable, inspectable, and cross-family. We deliberately **do not** build a
+local-first / cross-family data-capture mechanism. The only byte-for-byte data capture is the
+existing **Phase 05 EBS snapshot (cloud Linux only)**. Users needing stateful data either bake
+seed data into `install_steps`, externalize it themselves, or use an EBS snapshot where supported.
+Devices from manifests are cattle, not pets. See Phase 10 "Non-goal" section for full consequences.
 
 ---
 

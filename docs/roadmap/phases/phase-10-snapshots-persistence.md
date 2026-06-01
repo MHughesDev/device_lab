@@ -29,6 +29,29 @@ terminated (resources released). The Phase 08 ResourceLedger applies only to run
 
 ---
 
+## Non-goal: in-application data and on-device databases (decided 2026-06-01)
+
+A manifest captures the **recipe, not the data**. It records *that* Postgres/SQLite/an app is
+installed and configured — **not** the rows in a database, files a user created, login sessions,
+caches, or any in-application state. This is the `docker build` / not `docker commit` distinction,
+and it is **intentional**: it keeps manifests portable, inspectable, git-able, and cross-family.
+
+Consequences the UI and docs must make explicit so no one is surprised:
+
+- **Create-from-manifest always yields a fresh, empty-data device.** Re-running a manifest does
+  not restore a database or user files — it reinstalls the software and re-applies config only.
+- **The only mechanism that captures on-disk data byte-for-byte is the Phase 05 EBS snapshot**,
+  which is **cloud Linux only**. There is deliberately no local-first, cross-family equivalent.
+- **If a user needs stateful data to survive**, the supported patterns are: (a) bake seed data
+  into the manifest via `install_steps` / `startup_commands`; (b) externalize it themselves
+  (S3, git, the app's own sync); or (c) use a Phase 05 EBS snapshot where the family/location
+  supports it. The platform does not manage application data lifecycles.
+
+Devices created from manifests are **cattle, not pets**. The "Capture environment manifest" action
+in the UI (Phase 11) must label clearly that it saves the *environment*, not the *data*.
+
+---
+
 ## Objective
 
 Build the **DeviceManifest** model and the **Manifest Registry** so a user can:
