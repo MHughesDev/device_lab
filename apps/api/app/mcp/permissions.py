@@ -28,10 +28,6 @@ ROLE_TOOLS: dict[Role, set[str]] = {
         "list_windows",
         "list_processes",
         "list_directory",
-        # Browser read-only
-        "list_tabs",
-        "get_console_logs",
-        "get_network_requests",
     },
     Role.interact: {
         "click",
@@ -54,9 +50,8 @@ ROLE_TOOLS: dict[Role, set[str]] = {
         # Clipboard
         "get_clipboard",
         "set_clipboard",
-        # App / navigation
+        # App launch
         "launch_app",
-        "navigate",
         # Wait
         "wait_for",
         # Window management
@@ -66,11 +61,6 @@ ROLE_TOOLS: dict[Role, set[str]] = {
         "long_press",
         "pinch",
         "press_button",
-        # Browser tab / dialog management
-        "new_tab",
-        "close_tab",
-        "switch_tab",
-        "handle_dialog",
     },
     Role.test: {
         "list_recipes",

@@ -76,15 +76,6 @@ class MobileCapabilities(BaseModel):
     press_button: bool = False
 
 
-class BrowserCapabilities(BaseModel):
-    """Playwright-backed browser-specific tools."""
-    navigate: bool = False
-    tabs: bool = False           # new_tab / close_tab / list_tabs / switch_tab
-    console_logs: bool = False
-    network_requests: bool = False
-    dialogs: bool = False        # handle_dialog
-
-
 class DeviceCapabilities(BaseModel):
     lifecycle: LifecycleCapabilities = LifecycleCapabilities()
     observe: ObserveCapabilities = ObserveCapabilities()
@@ -95,7 +86,6 @@ class DeviceCapabilities(BaseModel):
     screen_recording: ScreenRecordingCapabilities = ScreenRecordingCapabilities()
     system: SystemCapabilities = SystemCapabilities()
     mobile: MobileCapabilities = MobileCapabilities()
-    browser: BrowserCapabilities = BrowserCapabilities()
     recipes: bool = False
     streaming: bool = False
     dangerous_mode: bool = False
@@ -176,28 +166,12 @@ IOS_SIM_CAPABILITIES = DeviceCapabilities(
     streaming=True,
 )
 
-BROWSER_CAPABILITIES = DeviceCapabilities(
-    lifecycle=LifecycleCapabilities(provision=True, terminate=True),
-    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
-    interact=_FULL_INTERACT,
-    screen_recording=ScreenRecordingCapabilities(supported=True, output_format="webm"),
-    system=SystemCapabilities(
-        key_hold=True, clipboard=True, launch_app=True,
-        wait_for=True, screen_size=True,
-    ),
-    browser=BrowserCapabilities(
-        navigate=True, tabs=True, console_logs=True,
-        network_requests=True, dialogs=True,
-    ),
-)
-
 FAMILY_CAPABILITIES: dict[str, DeviceCapabilities] = {
     "linux": LINUX_CAPABILITIES,
     "macos": MACOS_CAPABILITIES,
     "windows": WINDOWS_CAPABILITIES,
     "android": ANDROID_CAPABILITIES,
     "ios_sim": IOS_SIM_CAPABILITIES,
-    "browser": BROWSER_CAPABILITIES,
 }
 
 

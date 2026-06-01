@@ -33,12 +33,6 @@ def _capability_tools(caps: DeviceCapabilities, device_state: str) -> set[str]:
             tools.add("list_processes")
         if caps.system.filesystem:
             tools.add("list_directory")
-        if caps.browser.tabs:
-            tools.add("list_tabs")
-        if caps.browser.console_logs:
-            tools.add("get_console_logs")
-        if caps.browser.network_requests:
-            tools.add("get_network_requests")
 
     if device_state in INTERACT_STATES:
         interact = caps.interact
@@ -95,13 +89,6 @@ def _capability_tools(caps: DeviceCapabilities, device_state: str) -> set[str]:
             tools.add("pinch")
         if caps.mobile.press_button:
             tools.add("press_button")
-        # Browser-specific
-        if caps.browser.navigate:
-            tools.add("navigate")
-        if caps.browser.tabs:
-            tools |= {"new_tab", "close_tab", "switch_tab"}
-        if caps.browser.dialogs:
-            tools.add("handle_dialog")
 
     if device_state in LIFECYCLE_STATES:
         if caps.lifecycle.stop:

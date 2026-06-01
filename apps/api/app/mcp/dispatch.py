@@ -66,8 +66,6 @@ async def screenshot_b64_for_device(device_id: str) -> str:
         from app.adapters.android.interaction import screenshot_b64
     elif family == "ios_sim":
         from app.adapters.ios_sim.interaction import screenshot_b64
-    elif family == "browser":
-        from app.adapters.browser.interaction import screenshot_b64
     else:
         return ""
     return await screenshot_b64(device)

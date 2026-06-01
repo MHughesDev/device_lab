@@ -373,8 +373,6 @@ async def _screenshot_b64(device: object) -> str:
         from app.adapters.android.interaction import screenshot_b64  # type: ignore[no-redef]
     elif family == "ios_sim":
         from app.adapters.ios_sim.interaction import screenshot_b64  # type: ignore[no-redef]
-    elif family == "browser":
-        from app.adapters.browser.interaction import screenshot_b64  # type: ignore[no-redef]
     else:
         return ""
     return await screenshot_b64(device)
@@ -385,5 +383,4 @@ import app.mcp.tools.identity  # noqa: E402, F401
 import app.mcp.tools.screen_recording  # noqa: E402, F401
 import app.mcp.tools.computer_use_ext  # noqa: E402, F401
 import app.mcp.tools.observation_ops  # noqa: E402, F401
-import app.mcp.tools.browser_tools  # noqa: E402, F401
 import app.mcp.tools.mobile_ops  # noqa: E402, F401

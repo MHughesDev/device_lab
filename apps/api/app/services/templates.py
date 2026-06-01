@@ -22,18 +22,6 @@ SEED_TEMPLATES = [
             "ap-southeast-1", "ap-northeast-1",
         ]),
     },
-    {
-        "id": "00000000-0000-0000-0002-000000000001",
-        "family": "browser",
-        "name": "browser-local",
-        "description": "Local Chromium browser session via Playwright. No cloud account required.",
-        "capability_json": json.dumps({
-            "observe": ["ax_tree", "screenshot"],
-            "interact": ["click", "type", "navigate", "fill_form"],
-            "streaming": False,
-        }),
-        "supported_regions": json.dumps([]),
-    },
 ]
 
 

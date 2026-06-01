@@ -64,11 +64,4 @@ async def _observe_ax(device: Device) -> dict:
             "note": "AX extraction runs on remote instance via SSM in phase 03",
             "nodes": [],
         }
-    elif device.family == "browser":
-        from app.adapters.browser.adapter import _sessions
-        session = _sessions.get(str(device.id))
-        if session and session._page is not None:
-            from app.adapters.browser.observation import extract_ax_tree
-            return await extract_ax_tree(session._page)
-        return {"type": "ax_tree", "family": "browser", "nodes": [], "note": "No active browser session"}
     return {"type": "ax_tree", "family": device.family, "nodes": []}

@@ -104,8 +104,6 @@ async def _dispatch_start(device: object, recording_id: str) -> str | None:
         from app.adapters.android.recording import start as _start  # type: ignore[no-redef]
     elif family == "ios_sim":
         from app.adapters.ios_sim.recording import start as _start  # type: ignore[no-redef]
-    elif family == "browser":
-        from app.adapters.browser.recording import start as _start  # type: ignore[no-redef]
     else:
         raise ValueError(f"Screen recording not supported for family '{family}'")
     return await _start(device, recording_id)
@@ -123,8 +121,6 @@ async def _dispatch_stop(device: object, session: RecordingSession) -> str | Non
         from app.adapters.android.recording import stop as _stop  # type: ignore[no-redef]
     elif family == "ios_sim":
         from app.adapters.ios_sim.recording import stop as _stop  # type: ignore[no-redef]
-    elif family == "browser":
-        from app.adapters.browser.recording import stop as _stop  # type: ignore[no-redef]
     else:
         raise ValueError(f"Screen recording not supported for family '{family}'")
     return await _stop(device, session)
