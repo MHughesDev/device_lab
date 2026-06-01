@@ -11,7 +11,7 @@ both on AWS (cloud) and locally on the developer's own machine.
 |---|---|---|---|
 | **linux** | Ubuntu / Amazon Linux | None | Free AMIs; no license cost |
 | **macos** | macOS Sequoia / Sonoma | None (EULA compliant) | AWS Mac Dedicated Hosts run on real Apple hardware; Apple's EULA is satisfied by running on Apple silicon/Intel Mac Mini |
-| **windows** | Windows Server / Windows 11 | Bundled | Microsoft license is included in the EC2 hourly rate for Windows AMIs; AWS pays Microsoft, charges you slightly more per hour |
+| **windows** | Windows Server / Windows 11 | Bundled | Microsoft license is included in the EC2 hourly rate for Windows AMIs; AWS pays Microsoft, charges you slightly more per hour; no action required from the user |
 | **android** | Android (AOSP) via ADB | None | AOSP is open source; ADB ships free with Android SDK |
 | **ios_sim** | iOS Simulator via Xcode | None | Simulator ships with Xcode (free); runs on the same Mac Dedicated Host as the macOS family |
 
@@ -28,7 +28,7 @@ both on AWS (cloud) and locally on the developer's own machine.
 |---|---|---|---|
 | **linux** | Ubuntu / Debian / Fedora etc. | None | Free; run in VirtualBox, VMware, QEMU, or UTM |
 | **macos** | macOS | None — **but requires Apple hardware** | macOS VMs are only legal on Apple hardware; on a Mac you can run macOS VMs via UTM or VMware Fusion; on non-Apple hardware this is an EULA violation |
-| **windows** | Windows 10/11 | **License required** | Retail license ($139–$199); or use Microsoft's free 90-day evaluation ISO; Visual Studio / MSDN subscribers get licenses included |
+| **windows** | Windows 10/11 | **Not required for testing** | Use Microsoft's official evaluation ISO (free, 90-day client / 180-day Server, renewable); or run unactivated — all functionality DeviceLab uses works without a license; a paid license is only needed for personalization features (wallpaper/themes), which DeviceLab does not expose |
 | **android** | Android Emulator (AVD) | None | Ships free with Android Studio; AOSP-based, no license |
 | **ios_sim** | iOS Simulator | None — **but requires a Mac** | Simulator ships with Xcode (free from Mac App Store); cannot run on Windows or Linux |
 
@@ -48,5 +48,5 @@ both on AWS (cloud) and locally on the developer's own machine.
 |---|---|
 | macOS (any context) | **Must be on Apple hardware** — cloud or local. Non-negotiable per Apple EULA. |
 | iOS Simulator (any context) | **Requires macOS**, therefore requires Apple hardware. |
-| Windows (local) | **Needs a license**. AWS handles this for you in the cloud; locally you are responsible. |
+| Windows (local) | **No license needed for DeviceLab use**. Unactivated Windows is fully functional for all testing; the only restrictions are personalization features (wallpaper/themes) which DeviceLab does not expose. Recommended: use Microsoft's official evaluation ISO (free, 90 days client / 180 days Server). |
 | Linux / Android | No licensing constraints in any context. |

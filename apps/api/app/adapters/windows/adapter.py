@@ -18,7 +18,7 @@ class WindowsAdapter(DeviceAdapter):
             spi_version=SPI_VERSION,
             adapter_version="1.0.0",
             family="windows",
-            display_name="Windows Server (EC2 + SSM)",
+            display_name="Windows (EC2 + SSM) — evaluation ISO or unactivated; no license required for testing",
             capabilities=DeviceCapabilities(
                 observe=["screenshot", "ax_tree"],
                 interact=["click", "double_click", "right_click", "mouse_move",
