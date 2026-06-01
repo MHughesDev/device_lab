@@ -27,6 +27,7 @@ class IOSSimulatorAdapter(DeviceAdapter):
                 network=[],
                 streaming=True,
                 snapshot=True,
+                screen_recording=True,
             ),
             required_providers=["aws_ec2_dedicated_host", "ssm"],
         )

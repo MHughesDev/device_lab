@@ -63,6 +63,7 @@ class LinuxAdapter(DeviceAdapter):
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=True,
+                screen_recording=True,
                 dangerous_actions=["raw_shell"],
             ),
             required_providers=["aws_ec2", "ssm"],

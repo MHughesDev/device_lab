@@ -25,6 +25,7 @@ class IOSRealAdapter(DeviceAdapter):
                 network=["capture"],
                 streaming=True,
                 snapshot=False,
+                screen_recording=True,
             ),
             required_providers=["aws_device_farm"],
         )

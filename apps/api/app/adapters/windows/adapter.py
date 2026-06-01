@@ -25,6 +25,7 @@ class WindowsAdapter(DeviceAdapter):
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=True,
+                screen_recording=True,
             ),
             required_providers=["aws_ec2", "ssm"],
         )

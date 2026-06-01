@@ -32,6 +32,7 @@ class BrowserAdapter(DeviceAdapter):
                 network=[],
                 streaming=False,
                 snapshot=False,
+                screen_recording=True,
             ),
             required_providers=["local_playwright"],
         )

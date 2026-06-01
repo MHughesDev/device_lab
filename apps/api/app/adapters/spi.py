@@ -15,6 +15,7 @@ class DeviceCapabilities:
     network: list[str] = field(default_factory=list)
     streaming: bool = False
     snapshot: bool = False
+    screen_recording: bool = False
     dangerous_actions: list[str] = field(default_factory=list)
 
 
@@ -84,6 +85,14 @@ class DeviceAdapter(ABC):
     async def stream_offer(self, device: object) -> str:
         """Return SDP offer string for WebRTC stream negotiation."""
         raise CapabilityUnsupportedError("streaming", self.manifest().family)
+
+    async def start_recording(self, device: object, recording_id: str) -> str:
+        """Start screen recording. Returns an opaque handle (PID, path, etc.)."""
+        raise CapabilityUnsupportedError("screen_recording", self.manifest().family)
+
+    async def stop_recording(self, device: object, session: object) -> str:
+        """Stop recording and return the storage path."""
+        raise CapabilityUnsupportedError("screen_recording", self.manifest().family)
 
     async def capture_artifacts(self, device: object, run_id: str) -> list[object]:
         return []

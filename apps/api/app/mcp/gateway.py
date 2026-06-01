@@ -319,3 +319,4 @@ def _run_action(
 
 # Register tool extensions — importing the module is enough to register @mcp.tool() decorators
 import app.mcp.tools.identity  # noqa: E402, F401
+import app.mcp.tools.screen_recording  # noqa: E402, F401

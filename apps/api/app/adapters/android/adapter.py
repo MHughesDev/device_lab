@@ -27,6 +27,7 @@ class AndroidAdapter(DeviceAdapter):
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=False,
+                screen_recording=True,
             ),
             required_providers=["aws_ec2", "ssm", "adb"],
             supported_regions=None,
