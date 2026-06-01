@@ -35,6 +35,10 @@ class IOSSimulatorAdapter(DeviceAdapter):
 
     async def provision(self, device: object, template: object) -> dict:
         """Provision macOS host, create and boot iOS Simulator via xcrun simctl."""
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.ios_sim.local_provision import provision as _local_provision
+            return await _local_provision(device, template)
+
         from app.adapters.macos.adapter import MacOSAdapter
         from app.transport.ssm import SSMChannel
 
@@ -56,6 +60,10 @@ class IOSSimulatorAdapter(DeviceAdapter):
 
     async def terminate(self, device: object) -> None:
         """Shutdown and delete simulator, then terminate macOS host."""
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.ios_sim.local_provision import terminate as _local_terminate
+            return await _local_terminate(device)
+
         if not getattr(device, "provider_ids_json", None):
             return
         ids = json.loads(device.provider_ids_json)  # type: ignore[attr-defined]

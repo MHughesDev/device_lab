@@ -37,6 +37,10 @@ class MacOSAdapter(DeviceAdapter):
 
     async def provision(self, device: object, template: object) -> dict:
         """Allocate EC2 Dedicated Host (mac2.metal), launch Mac instance, bootstrap agent."""
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.macos.local_provision import provision as _local_provision
+            return await _local_provision(device, template)
+
         import boto3
         workspace_id = str(getattr(device, "workspace_id", ""))
         device_id = str(getattr(device, "id", ""))
@@ -91,6 +95,10 @@ class MacOSAdapter(DeviceAdapter):
 
     async def terminate(self, device: object) -> None:
         """Terminate instance. Warn if dedicated host < 24h old (still billed)."""
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.macos.local_provision import terminate as _local_terminate
+            return await _local_terminate(device)
+
         if not getattr(device, "provider_ids_json", None):
             return
         ids = json.loads(device.provider_ids_json)  # type: ignore[attr-defined]
