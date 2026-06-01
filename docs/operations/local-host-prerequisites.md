@@ -45,6 +45,17 @@ docker info                         # must succeed
 devicelab doctor                    # Docker check must show ✓
 ```
 
+### Xvfb (virtual framebuffer — Phase 08)
+
+Linux containers get a real X11 framebuffer via `Xvfb`. DeviceLab installs it automatically inside
+the container at first boot if not baked into the image. To bake it into a custom image:
+
+```dockerfile
+RUN apt-get update && apt-get install -y xvfb fluxbox x11-utils
+```
+
+Xvfb is a **container-side** dependency (not a host prerequisite). The host only needs Docker.
+
 ---
 
 ## Android (AVD emulator)

@@ -9,7 +9,7 @@ updated: "2026-06-01"
 
 # Interactive Device Workspace — Long-term Plan (Phases 08–12)
 
-**Progress: 0%** `░░░░░░░░░░` — 0 of 5 phases complete (08–12 planned). Phases 01–07 (local
+**Progress: 20%** `██░░░░░░░░` — 1 of 5 phases complete (08–12); Phase 09 next. Phases 01–07 (local
 hosting) already landed; this initiative builds the human-facing, low-latency interactive layer
 on top of the local-first runtime.
 
