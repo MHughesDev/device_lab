@@ -4,6 +4,20 @@ import asyncio
 import uuid
 
 
+def _emit_mcp(device_id: str, tool: str, decision: str, role: str = "agent") -> None:
+    try:
+        from app.services.device_log_bus import get_log_bus
+        get_log_bus().emit(
+            device_id,
+            level="info",
+            source="mcp",
+            message=f"MCP tool '{tool}' decision={decision}",
+            fields={"tool": tool, "role": role, "decision": decision},
+        )
+    except Exception:
+        pass
+
+
 def run_action(device_id: str, action: str, params: dict) -> dict:
     """Resolve device → adapter → act(). Used by all MCP interaction tools."""
     from app.core.db import engine
@@ -23,7 +37,9 @@ def run_action(device_id: str, action: str, params: dict) -> dict:
         try:
             adapter_cls = AdapterRegistry.get(device.family)
         except KeyError:
+            _emit_mcp(device_id, action, decision="deny")
             return {"success": False, "error": f"No adapter for family '{device.family}'"}
+        _emit_mcp(device_id, action, decision="allow")
         try:
             result = asyncio.get_event_loop().run_until_complete(
                 adapter_cls().act(device, action, params)

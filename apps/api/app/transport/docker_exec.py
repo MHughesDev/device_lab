@@ -16,11 +16,12 @@ class DockerExecChannel(Channel):
     for heartbeat.
     """
 
-    def __init__(self, container_id: str) -> None:
+    def __init__(self, container_id: str, device_id: str | None = None) -> None:
         import docker
         self._client = docker.from_env()
         self._container_id = container_id
         self._container = self._client.containers.get(container_id)
+        self._device_id = device_id
 
     # ------------------------------------------------------------------
     # Channel interface
@@ -48,7 +49,24 @@ class DockerExecChannel(Channel):
         stdout_bytes, stderr_bytes = result.output or (b"", b"")
         stdout = (stdout_bytes or b"").decode(errors="replace")
         stderr = (stderr_bytes or b"").decode(errors="replace")
+
+        if self._device_id:
+            self._emit_transport(cmd_str[2] if len(cmd_str) > 2 else str(cmd_str), exit_code)
+
         return ExecResult(stdout=stdout, stderr=stderr, exit_code=exit_code)
+
+    def _emit_transport(self, command_summary: str, exit_code: int) -> None:
+        try:
+            from app.services.device_log_bus import get_log_bus
+            get_log_bus().emit(
+                self._device_id,
+                level="debug" if exit_code == 0 else "warn",
+                source="transport",
+                message=f"exec exit_code={exit_code}",
+                fields={"cmd": command_summary[:200], "exit_code": exit_code},
+            )
+        except Exception:
+            pass
 
     async def push_file(self, local_path: str, remote_path: str) -> None:
         """Copy a local file into the container via put_archive."""

@@ -1,4 +1,4 @@
-# services/local/reconcile.py — Reconcile DB Device rows against local resource state
+# services/local/reconcile.py — Reconcile DB Device rows against local resource state + ledger
 from __future__ import annotations
 import json
 import logging
@@ -46,7 +46,70 @@ async def reconcile_local_devices(db) -> dict:
             log.exception("Error reconciling device %s", device_id)
 
     db.commit()
+
+    # Rebuild ledger from live device state after device reconciliation
+    await reconcile_ledger(db)
+
     return results
+
+
+async def reconcile_ledger(db) -> dict:
+    """Rebuild the Host Resource Ledger from current live Device rows.
+
+    Called on startup after device reconciliation. Drops reservations for
+    terminated/failed devices; ensures live devices have reservations.
+    Prevents leaked reservations after a crash.
+    """
+    from sqlmodel import select
+    from app.models import Device, HostReservation
+
+    result: dict = {"reserved": [], "released": [], "errors": []}
+
+    try:
+        from app.services.local.ledger import get_ledger
+        from app.services.device_fsm import _device_resource_claim
+    except ImportError:
+        log.warning("Ledger not available; skipping ledger reconciliation")
+        return result
+
+    ledger = get_ledger()
+
+    # Live (non-terminal) local devices should have reservations
+    live_stmt = select(Device).where(
+        Device.location == "local",
+        Device.state.not_in(list(_TERMINAL_STATES)),
+    )
+    live_devices = db.exec(live_stmt).all()
+    live_ids = {str(d.id) for d in live_devices}
+
+    for device in live_devices:
+        device_id = str(device.id)
+        try:
+            claim = _device_resource_claim(device)
+            ledger.reserve(device.id, claim)
+            result["reserved"].append(device_id)
+        except Exception as exc:
+            result["errors"].append({"device_id": device_id, "error": str(exc)})
+            log.exception("Error reserving ledger for device %s", device_id)
+
+    # Drop reservations for devices that no longer exist or are terminal
+    reservation_stmt = select(HostReservation)
+    all_reservations = db.exec(reservation_stmt).all()
+    for reservation in all_reservations:
+        rid = str(reservation.device_id)
+        if rid not in live_ids:
+            try:
+                ledger.release(reservation.device_id)
+                result["released"].append(rid)
+                log.info("Ledger: released leaked reservation for device %s", rid)
+            except Exception as exc:
+                result["errors"].append({"device_id": rid, "error": str(exc)})
+
+    log.info(
+        "Ledger reconciled: %d reserved, %d released, %d errors",
+        len(result["reserved"]), len(result["released"]), len(result["errors"]),
+    )
+    return result
 
 
 async def _probe_alive(device: object) -> bool:

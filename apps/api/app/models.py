@@ -122,6 +122,9 @@ class Device(SQLModel, table=True):
     workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
     family: str = Field(max_length=64)
     location: str = Field(max_length=32, default="cloud")
+    name: str | None = Field(default=None, max_length=120)
+    display_mode: str = Field(default="headless", max_length=16)  # "headless" | "interactive"
+    mcp_exposed: bool = Field(default=True)
     state: str = Field(max_length=64, default="requested")
     phase: str | None = Field(default=None, max_length=64)
     provider_ids_json: str | None = Field(default=None, sa_column=Column(Text))
@@ -139,6 +142,47 @@ class Device(SQLModel, table=True):
 
     template: DeviceTemplate | None = Relationship(back_populates="devices")
     workspace: Workspace | None = Relationship(back_populates="devices")
+
+
+# ---------------------------------------------------------------------------
+# Phase 08 — Host Resource Ledger + Device Log Bus
+# ---------------------------------------------------------------------------
+
+class HostReservation(SQLModel, table=True):
+    """Persisted per-device resource claim for the Host Resource Ledger."""
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    device_id: uuid.UUID = Field(index=True, unique=True)
+    ram_mb: int = Field(default=0)
+    vcpu: float = Field(default=0.0)
+    disk_mb: int = Field(default=0)
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class DeviceLogEvent(SQLModel, table=True):
+    """One entry in the per-device structured log bus ring (Phase 08)."""
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    device_id: uuid.UUID = Field(index=True)
+    ts: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    level: str = Field(max_length=16)      # debug | info | warn | error
+    source: str = Field(max_length=32)     # lifecycle | provisioner | transport | stream | mcp | recording | manifest | ledger
+    message: str = Field(sa_column=Column(Text))
+    fields_json: str | None = Field(default=None, sa_column=Column(Text))  # secret-redacted extras
+
+
+class DeviceLogEventPublic(SQLModel):
+    id: uuid.UUID
+    device_id: uuid.UUID
+    ts: datetime
+    level: str
+    source: str
+    message: str
+    fields_json: str | None
 
 
 class AuditEvent(SQLModel, table=True):
@@ -228,6 +272,10 @@ class DeviceCreate(SQLModel):
     template_id: uuid.UUID
     cloud_account_id: uuid.UUID | None = None
     region: str | None = None
+    name: str | None = None
+    location: str = "local"
+    display_mode: str = "headless"
+    mcp_exposed: bool = True
 
 
 class DeviceLifecycleEvent(SQLModel):
@@ -239,11 +287,19 @@ class DeviceLifecycleEvent(SQLModel):
 class DevicePublic(SQLModel):
     id: uuid.UUID
     family: str
+    location: str
+    name: str | None
+    display_mode: str
+    mcp_exposed: bool
     state: str
     phase: str | None
     cost_estimate: float | None
     created_at: datetime
     updated_at: datetime
+
+    @property
+    def title(self) -> str:
+        return self.name or f"{self.family} · {str(self.id)[:8]}"
 
 
 class WorkspaceCapabilities(SQLModel):
