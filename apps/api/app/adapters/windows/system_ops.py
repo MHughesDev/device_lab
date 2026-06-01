@@ -1,11 +1,8 @@
-# system_ops.py — Windows system operations via SSM PowerShell
+# system_ops.py — Windows system operations via SSMChannel (PowerShell)
 from __future__ import annotations
-import json
-import time
-
-import boto3
 
 from app.adapters.spi import CapabilityUnsupportedError
+from app.transport.channel import ChannelFactory
 
 SYSTEM_ACTIONS = {
     "run_shell", "get_clipboard", "set_clipboard", "launch_app", "wait_for",
@@ -17,49 +14,41 @@ SYSTEM_ACTIONS = {
 
 
 async def handle_system_action(device: object, action: str, params: dict) -> dict:
-    ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-    instance_id = ids.get("instance_id", "")
-    region = ids.get("region", "us-east-1")
-    ssm = boto3.client("ssm", region_name=region)
-
     cmd = _build_cmd(action, params)
     if cmd is None:
         raise CapabilityUnsupportedError(action, "windows")
 
-    resp = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunPowerShellScript",
-        Parameters={"commands": [cmd]},
-    )
-    out = _poll(ssm, resp["Command"]["CommandId"], instance_id)
+    channel = ChannelFactory.get(device)
+    result = await channel.exec(cmd)
+    out = {"stdout": result.stdout, "stderr": result.stderr, "exit_code": result.exit_code}
 
     if action == "run_shell":
-        return {"success": True, "stdout": out.get("stdout", ""), "stderr": out.get("stderr", ""), "exit_code": out.get("exit_code", 0)}
+        return {"success": True, "stdout": out["stdout"], "stderr": out["stderr"], "exit_code": out["exit_code"]}
     if action == "get_clipboard":
-        return {"success": True, "text": out.get("stdout", "").strip()}
+        return {"success": True, "text": out["stdout"].strip()}
     if action == "list_windows":
-        lines = [l.strip() for l in out.get("stdout", "").splitlines() if l.strip()]
+        lines = [l.strip() for l in out["stdout"].splitlines() if l.strip()]
         return {"success": True, "windows": [{"title": l} for l in lines]}
     if action == "list_processes":
         import csv, io
-        reader = csv.DictReader(io.StringIO(out.get("stdout", "")))
-        procs = [{"pid": r.get("Id",""), "name": r.get("ProcessName",""), "cpu": r.get("CPU","")} for r in reader]
+        reader = csv.DictReader(io.StringIO(out["stdout"]))
+        procs = [{"pid": r.get("Id", ""), "name": r.get("ProcessName", ""), "cpu": r.get("CPU", "")} for r in reader]
         return {"success": True, "processes": procs}
     if action == "get_screen_size":
-        raw = out.get("stdout", "").strip()
+        raw = out["stdout"].strip()
         if "," in raw:
             w, h = raw.split(",", 1)
             return {"success": True, "width": int(w.strip()), "height": int(h.strip())}
         return {"success": True, "raw": raw}
     if action == "list_directory":
-        lines = [l.strip() for l in out.get("stdout", "").splitlines() if l.strip()]
+        lines = [l.strip() for l in out["stdout"].splitlines() if l.strip()]
         return {"success": True, "entries": lines}
     if action == "read_file":
-        return {"success": True, "content": out.get("stdout", "")}
+        return {"success": True, "content": out["stdout"]}
     if action == "wait_for":
-        found = "1" in out.get("stdout", "")
+        found = "1" in out["stdout"]
         return {"success": True, "found": found}
-    return {"success": True, "action": action, "output": out.get("stdout", "")}
+    return {"success": True, "action": action, "output": out["stdout"]}
 
 
 _FORMS = "Add-Type -AssemblyName System.Windows.Forms; "
@@ -144,16 +133,3 @@ def _build_cmd(action: str, params: dict) -> str | None:
             f"[KbAPI2]::keybd_event([System.Windows.Forms.Keys]::'{key}', 0, 0x0002, [UIntPtr]::Zero)"
         )
     return None
-
-
-def _poll(ssm, command_id: str, instance_id: str, retries: int = 30) -> dict:
-    for _ in range(retries):
-        time.sleep(1)
-        inv = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-        if inv["Status"] in ("Success", "Failed", "Cancelled", "TimedOut"):
-            return {
-                "stdout": inv.get("StandardOutputContent", ""),
-                "stderr": inv.get("StandardErrorContent", ""),
-                "exit_code": inv.get("ResponseCode", 0),
-            }
-    return {"stdout": "", "stderr": "Timeout", "exit_code": -1}

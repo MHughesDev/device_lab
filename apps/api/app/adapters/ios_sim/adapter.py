@@ -36,29 +36,20 @@ class IOSSimulatorAdapter(DeviceAdapter):
     async def provision(self, device: object, template: object) -> dict:
         """Provision macOS host, create and boot iOS Simulator via xcrun simctl."""
         from app.adapters.macos.adapter import MacOSAdapter
+        from app.transport.ssm import SSMChannel
+
         macos = MacOSAdapter()
         ids = await macos.provision(device, template)
         instance_id = ids["instance_id"]
         region = ids.get("region", "us-east-1")
 
-        import boto3, time
-        ssm = boto3.client("ssm", region_name=region)
-        resp = ssm.send_command(
-            InstanceIds=[instance_id],
-            DocumentName="AWS-RunShellScript",
-            Parameters={"commands": [
-                "xcrun simctl create devicelab-sim 'iPhone 15' 'iOS17.0' 2>/tmp/simctl.log",
-                "UDID=$(xcrun simctl list devices | grep devicelab-sim | grep -o '[A-Z0-9-]*' | head -1)",
-                "xcrun simctl boot $UDID",
-                "echo $UDID > /tmp/sim_udid",
-            ]},
-        )
-        command_id = resp["Command"]["CommandId"]
-        for _ in range(60):
-            time.sleep(2)
-            output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-            if output["Status"] == "Success":
-                break
+        channel = SSMChannel(instance_id, region)
+        await channel.exec([
+            "xcrun simctl create devicelab-sim 'iPhone 15' 'iOS17.0' 2>/tmp/simctl.log",
+            "UDID=$(xcrun simctl list devices | grep devicelab-sim | grep -o '[A-Z0-9-]*' | head -1)",
+            "xcrun simctl boot $UDID",
+            "echo $UDID > /tmp/sim_udid",
+        ], timeout_ms=120_000)
 
         ids["sim_udid"] = "pending"
         return ids
@@ -73,16 +64,12 @@ class IOSSimulatorAdapter(DeviceAdapter):
         region = ids.get("region", "us-east-1")
 
         if instance_id and sim_udid and sim_udid != "pending":
-            import boto3
-            ssm = boto3.client("ssm", region_name=region)
-            ssm.send_command(
-                InstanceIds=[instance_id],
-                DocumentName="AWS-RunShellScript",
-                Parameters={"commands": [
-                    f"xcrun simctl shutdown {sim_udid}",
-                    f"xcrun simctl delete {sim_udid}",
-                ]},
-            )
+            from app.transport.ssm import SSMChannel
+            channel = SSMChannel(instance_id, region)
+            await channel.exec([
+                f"xcrun simctl shutdown {sim_udid}",
+                f"xcrun simctl delete {sim_udid}",
+            ])
 
         if instance_id:
             import boto3
@@ -93,27 +80,22 @@ class IOSSimulatorAdapter(DeviceAdapter):
         if tier not in self.manifest().capabilities.observe:
             raise CapabilityUnsupportedError(tier, "ios_sim")
         ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-        instance_id = ids.get("instance_id", "")
         sim_udid = ids.get("sim_udid", "")
-        region = ids.get("region", "us-east-1")
 
-        import boto3
         from datetime import UTC, datetime
         from app.models import ObservationEnvelope
-        ssm = boto3.client("ssm", region_name=region)
-        ssm.send_command(
-            InstanceIds=[instance_id],
-            DocumentName="AWS-RunShellScript",
-            Parameters={"commands": [
-                f"xcrun simctl io {sim_udid} screenshot /tmp/sim_screenshot.png",
-                "base64 /tmp/sim_screenshot.png",
-            ]},
-        )
+        from app.transport.channel import ChannelFactory
+
+        channel = ChannelFactory.get(device)
+        result = await channel.exec([
+            f"xcrun simctl io {sim_udid} screenshot /tmp/sim_screenshot.png",
+            "base64 /tmp/sim_screenshot.png",
+        ])
         return ObservationEnvelope(
             device_id=str(getattr(device, "id", "")),
             screen_version=getattr(device, "screen_version", 0),
             tier="screenshot",
-            screenshot_ref="",
+            screenshot_ref=result.stdout.strip(),
             observed_at=datetime.now(UTC),
         )
 
@@ -130,13 +112,7 @@ class IOSSimulatorAdapter(DeviceAdapter):
         from datetime import UTC, datetime
         snap_name = f"devicelab-snap-{int(datetime.now(UTC).timestamp())}"
 
-        import boto3
-        ssm = boto3.client("ssm", region_name=region)
-        ssm.send_command(
-            InstanceIds=[instance_id],
-            DocumentName="AWS-RunShellScript",
-            Parameters={"commands": [f"xcrun simctl clone {sim_udid} {snap_name}"]},
-        )
+        from app.transport.ssm import SSMChannel
+        channel = SSMChannel(instance_id, region)
+        await channel.exec(f"xcrun simctl clone {sim_udid} {snap_name}")
         return {"snapshot_name": snap_name}
-
-

@@ -1,11 +1,9 @@
-# system_ops.py — Linux system operations via SSM + standard Unix tools
+# system_ops.py — Linux system operations via SSMChannel + standard Unix tools
 from __future__ import annotations
 import json
-import time
-
-import boto3
 
 from app.adapters.spi import CapabilityUnsupportedError
+from app.transport.channel import ChannelFactory
 
 SYSTEM_ACTIONS = {
     "run_shell", "get_clipboard", "set_clipboard", "launch_app", "wait_for",
@@ -17,28 +15,20 @@ SYSTEM_ACTIONS = {
 
 
 async def handle_system_action(device: object, action: str, params: dict) -> dict:
-    ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-    instance_id = ids.get("instance_id", "")
-    region = ids.get("region", "us-east-1")
-    ssm = boto3.client("ssm", region_name=region)
-
     cmd = _build_cmd(action, params)
     if cmd is None:
         raise CapabilityUnsupportedError(action, "linux")
 
-    resp = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunShellScript",
-        Parameters={"commands": [cmd]},
-    )
-    out = _poll(ssm, resp["Command"]["CommandId"], instance_id)
+    channel = ChannelFactory.get(device)
+    result = await channel.exec(cmd)
+    out = {"stdout": result.stdout, "stderr": result.stderr, "exit_code": result.exit_code}
 
     if action == "run_shell":
-        return {"success": True, "stdout": out.get("stdout", ""), "stderr": out.get("stderr", ""), "exit_code": out.get("exit_code", 0)}
+        return {"success": True, "stdout": out["stdout"], "stderr": out["stderr"], "exit_code": out["exit_code"]}
     if action == "get_clipboard":
-        return {"success": True, "text": out.get("stdout", "").strip()}
+        return {"success": True, "text": out["stdout"].strip()}
     if action == "list_windows":
-        lines = [l for l in out.get("stdout", "").splitlines() if l.strip()]
+        lines = [l for l in out["stdout"].splitlines() if l.strip()]
         windows = []
         for line in lines:
             parts = line.split(None, 4)
@@ -46,7 +36,7 @@ async def handle_system_action(device: object, action: str, params: dict) -> dic
                 windows.append({"id": parts[0], "desktop": parts[1], "x": parts[2], "y": parts[3], "title": parts[4]})
         return {"success": True, "windows": windows}
     if action == "list_processes":
-        lines = out.get("stdout", "").strip().splitlines()
+        lines = out["stdout"].strip().splitlines()
         procs = []
         for line in lines[1:]:  # skip header
             parts = line.split(None, 3)
@@ -54,20 +44,20 @@ async def handle_system_action(device: object, action: str, params: dict) -> dic
                 procs.append({"pid": parts[0], "cpu": parts[1], "mem": parts[2], "name": parts[3]})
         return {"success": True, "processes": procs}
     if action == "get_screen_size":
-        raw = out.get("stdout", "").strip()  # e.g. "1920x1080"
+        raw = out["stdout"].strip()  # e.g. "1920x1080"
         if "x" in raw:
             w, h = raw.split("x", 1)
             return {"success": True, "width": int(w.strip()), "height": int(h.strip())}
         return {"success": True, "raw": raw}
     if action == "list_directory":
-        lines = [l for l in out.get("stdout", "").splitlines() if l.strip()]
+        lines = [l for l in out["stdout"].splitlines() if l.strip()]
         return {"success": True, "entries": lines}
     if action == "read_file":
-        return {"success": True, "content": out.get("stdout", "")}
+        return {"success": True, "content": out["stdout"]}
     if action == "wait_for":
-        found = out.get("stdout", "").strip() == "1"
+        found = out["stdout"].strip() == "1"
         return {"success": True, "found": found}
-    return {"success": True, "action": action, "output": out.get("stdout", "")}
+    return {"success": True, "action": action, "output": out["stdout"]}
 
 
 def _build_cmd(action: str, params: dict) -> str | None:
@@ -100,7 +90,6 @@ def _build_cmd(action: str, params: dict) -> str | None:
     elif action == "write_file":
         path = params.get("path", "")
         content = params.get("content", "")
-        # Write via heredoc
         return f"cat > {json.dumps(path)} << 'DEVICELAB_EOF'\n{content}\nDEVICELAB_EOF"
     elif action == "list_directory":
         path = params.get("path", ".")
@@ -131,16 +120,3 @@ def _build_cmd(action: str, params: dict) -> str | None:
         key = params.get("key", "")
         return f"DISPLAY=:0 xdotool keyup {key}"
     return None
-
-
-def _poll(ssm, command_id: str, instance_id: str, retries: int = 30) -> dict:
-    for _ in range(retries):
-        time.sleep(1)
-        inv = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-        if inv["Status"] in ("Success", "Failed", "Cancelled", "TimedOut"):
-            return {
-                "stdout": inv.get("StandardOutputContent", ""),
-                "stderr": inv.get("StandardErrorContent", ""),
-                "exit_code": inv.get("ResponseCode", 0),
-            }
-    return {"stdout": "", "stderr": "Timeout waiting for SSM command", "exit_code": -1}

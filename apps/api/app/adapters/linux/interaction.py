@@ -1,12 +1,10 @@
-# interaction.py — Linux interaction via SSM + xdotool (coordinate-based)
+# interaction.py — Linux interaction via SSMChannel + xdotool (coordinate-based)
 from __future__ import annotations
 import json
-import time
-
-import boto3
 
 from app.adapters.spi import CapabilityUnsupportedError
 from app.adapters.linux.system_ops import SYSTEM_ACTIONS, handle_system_action
+from app.transport.channel import ChannelFactory
 
 SUPPORTED_ACTIONS = {
     "click", "double_click", "right_click", "mouse_move",
@@ -20,32 +18,19 @@ async def act_linux(device: object, action: str, params: dict) -> dict:
     if action not in SUPPORTED_ACTIONS:
         raise CapabilityUnsupportedError(action, "linux")
 
-    ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-    instance_id = ids.get("instance_id", "")
-    region = ids.get("region", "us-east-1")
-
+    channel = ChannelFactory.get(device)
     cmd = _build_xdotool_command(action, params)
-    ssm = boto3.client("ssm", region_name=region)
-    resp = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunShellScript",
-        Parameters={"commands": [f"DISPLAY=:0 {cmd}"]},
-    )
+    result = await channel.exec(f"DISPLAY=:0 {cmd}")
 
     if action == "cursor_position":
-        command_id = resp["Command"]["CommandId"]
-        for _ in range(10):
-            time.sleep(1)
-            inv = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-            if inv["Status"] in ("Success", "Failed"):
-                raw = inv.get("StandardOutputContent", "")
-                # xdotool getmouselocation outputs: x:123 y:456 screen:0 window:789
-                parts = dict(p.split(":") for p in raw.split() if ":" in p)
-                return {
-                    "success": True,
-                    "x": int(parts.get("x", 0)),
-                    "y": int(parts.get("y", 0)),
-                }
+        raw = result.stdout.strip()
+        # xdotool getmouselocation outputs: x:123 y:456 screen:0 window:789
+        parts = dict(p.split(":") for p in raw.split() if ":" in p)
+        return {
+            "success": True,
+            "x": int(parts.get("x", 0)),
+            "y": int(parts.get("y", 0)),
+        }
 
     return {"success": True, "action": action}
 
@@ -79,32 +64,16 @@ def _build_xdotool_command(action: str, params: dict) -> str:
         return f"xdotool type --clearmodifiers '{text}'"
     elif action == "key":
         key = params.get("key", "Return")
-        # Normalize: ctrl+c → ctrl+c (xdotool accepts this format)
         return f"xdotool key {key}"
     return "true"
 
 
 async def screenshot_b64(device: object) -> str:
     """Capture screenshot, return base64-encoded PNG string."""
-    import time
-    ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-    instance_id = ids.get("instance_id", "")
-    region = ids.get("region", "us-east-1")
-
-    ssm = boto3.client("ssm", region_name=region)
-    resp = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunShellScript",
-        Parameters={"commands": [
-            "DISPLAY=:0 scrot /tmp/devicelab-shot.png 2>/dev/null || "
-            "DISPLAY=:0 import -window root -silent /tmp/devicelab-shot.png",
-            "base64 -w 0 /tmp/devicelab-shot.png",
-        ]},
-    )
-    command_id = resp["Command"]["CommandId"]
-    for _ in range(15):
-        time.sleep(1)
-        inv = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-        if inv["Status"] in ("Success", "Failed"):
-            return inv.get("StandardOutputContent", "").strip()
-    return ""
+    channel = ChannelFactory.get(device)
+    result = await channel.exec([
+        "DISPLAY=:0 scrot /tmp/devicelab-shot.png 2>/dev/null || "
+        "DISPLAY=:0 import -window root -silent /tmp/devicelab-shot.png",
+        "base64 -w 0 /tmp/devicelab-shot.png",
+    ])
+    return result.stdout.strip()

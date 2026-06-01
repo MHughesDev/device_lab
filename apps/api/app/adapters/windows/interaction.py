@@ -1,12 +1,9 @@
-# interaction.py — Windows interaction via SSM PowerShell (coordinate-based)
+# interaction.py — Windows interaction via SSMChannel (PowerShell, coordinate-based)
 from __future__ import annotations
-import json
-import time
-
-import boto3
 
 from app.adapters.spi import CapabilityUnsupportedError
 from app.adapters.windows.system_ops import SYSTEM_ACTIONS, handle_system_action
+from app.transport.channel import ChannelFactory
 
 SUPPORTED_ACTIONS = {
     "click", "double_click", "right_click", "mouse_move",
@@ -20,32 +17,19 @@ async def act_windows(device: object, action: str, params: dict) -> dict:
     if action not in SUPPORTED_ACTIONS:
         raise CapabilityUnsupportedError(action, "windows")
 
-    ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-    instance_id = ids.get("instance_id", "")
-    region = ids.get("region", "us-east-1")
-
+    channel = ChannelFactory.get(device)
     cmd = _build_ps_command(action, params)
-    ssm = boto3.client("ssm", region_name=region)
-    resp = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunPowerShellScript",
-        Parameters={"commands": [cmd]},
-    )
+    result = await channel.exec(cmd)
 
     if action == "cursor_position":
-        command_id = resp["Command"]["CommandId"]
-        for _ in range(10):
-            time.sleep(1)
-            inv = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-            if inv["Status"] in ("Success", "Failed"):
-                raw = inv.get("StandardOutputContent", "").strip()
-                # Output format: "x,y"
-                parts = raw.split(",")
-                return {
-                    "success": True,
-                    "x": int(parts[0]) if parts else 0,
-                    "y": int(parts[1]) if len(parts) > 1 else 0,
-                }
+        raw = result.stdout.strip()
+        # Output format: "x,y"
+        parts = raw.split(",")
+        return {
+            "success": True,
+            "x": int(parts[0]) if parts else 0,
+            "y": int(parts[1]) if len(parts) > 1 else 0,
+        }
 
     return {"success": True, "action": action}
 
@@ -132,7 +116,6 @@ def _build_ps_command(action: str, params: dict) -> str:
 
 
 def _to_sendkeys(key: str) -> str:
-    """Map standard key names to SendKeys format."""
     mapping = {
         "Return": "{ENTER}", "Escape": "{ESC}", "Tab": "{TAB}",
         "BackSpace": "{BACKSPACE}", "Delete": "{DELETE}",
@@ -148,10 +131,6 @@ def _to_sendkeys(key: str) -> str:
 
 async def screenshot_b64(device: object) -> str:
     """Capture full-desktop screenshot via PowerShell, return base64-encoded PNG."""
-    ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-    instance_id = ids.get("instance_id", "")
-    region = ids.get("region", "us-east-1")
-
     ps_cmd = (
         "Add-Type -AssemblyName System.Windows.Forms; "
         "Add-Type -AssemblyName System.Drawing; "
@@ -164,18 +143,6 @@ async def screenshot_b64(device: object) -> str:
         "$bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); "
         "[Convert]::ToBase64String($ms.ToArray())"
     )
-
-    ssm = boto3.client("ssm", region_name=region)
-    resp = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunPowerShellScript",
-        Parameters={"commands": [ps_cmd]},
-    )
-    command_id = resp["Command"]["CommandId"]
-    import time
-    for _ in range(15):
-        time.sleep(1)
-        inv = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-        if inv["Status"] in ("Success", "Failed"):
-            return inv.get("StandardOutputContent", "").strip()
-    return ""
+    channel = ChannelFactory.get(device)
+    result = await channel.exec(ps_cmd)
+    return result.stdout.strip()

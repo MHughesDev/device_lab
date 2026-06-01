@@ -1,12 +1,10 @@
-# interaction.py — iOS Simulator interaction via SSM + AppleScript coordinate injection
+# interaction.py — iOS Simulator interaction via SSMChannel + AppleScript coordinate injection
 from __future__ import annotations
 import json
-import time
-
-import boto3
 
 from app.adapters.spi import CapabilityUnsupportedError
 from app.adapters.ios_sim.system_ops import SYSTEM_ACTIONS, MOBILE_ACTIONS, handle_system_action, handle_mobile_action
+from app.transport.channel import ChannelFactory
 
 # right_click / mouse_move / cursor_position are desktop-only concepts; not exposed on sim
 SUPPORTED_ACTIONS = {"click", "double_click", "drag", "scroll", "type", "key"} | SYSTEM_ACTIONS | MOBILE_ACTIONS
@@ -21,17 +19,11 @@ async def act_ios_sim(device: object, action: str, params: dict) -> dict:
         return await handle_mobile_action(device, action, params)
 
     ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-    instance_id = ids.get("instance_id", "")
     sim_udid = ids.get("sim_udid", "")
-    region = ids.get("region", "us-east-1")
 
     cmd = _build_command(action, sim_udid, params)
-    ssm = boto3.client("ssm", region_name=region)
-    ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunShellScript",
-        Parameters={"commands": [cmd]},
-    )
+    channel = ChannelFactory.get(device)
+    await channel.exec(cmd)
     return {"success": True, "action": action}
 
 
@@ -39,7 +31,6 @@ def _build_command(action: str, sim_udid: str, params: dict) -> str:
     x, y = params.get("x", 0), params.get("y", 0)
 
     if action == "click":
-        # AppleScript coordinate tap in the Simulator window
         return (
             f"osascript -e 'tell application \"Simulator\" to activate' "
             f"-e 'tell application \"System Events\" to tell process \"Simulator\" "
@@ -90,23 +81,11 @@ def _map_key(key: str) -> str:
 async def screenshot_b64(device: object) -> str:
     """Capture iOS Simulator screenshot via simctl, return base64-encoded PNG."""
     ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-    instance_id = ids.get("instance_id", "")
     sim_udid = ids.get("sim_udid", "")
-    region = ids.get("region", "us-east-1")
 
-    ssm = boto3.client("ssm", region_name=region)
-    resp = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunShellScript",
-        Parameters={"commands": [
-            f"xcrun simctl io {sim_udid} screenshot /tmp/devicelab-sim-shot.png",
-            "base64 -i /tmp/devicelab-sim-shot.png",
-        ]},
-    )
-    command_id = resp["Command"]["CommandId"]
-    for _ in range(15):
-        time.sleep(1)
-        inv = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-        if inv["Status"] in ("Success", "Failed"):
-            return inv.get("StandardOutputContent", "").strip()
-    return ""
+    channel = ChannelFactory.get(device)
+    result = await channel.exec([
+        f"xcrun simctl io {sim_udid} screenshot /tmp/devicelab-sim-shot.png",
+        "base64 -i /tmp/devicelab-sim-shot.png",
+    ])
+    return result.stdout.strip()
