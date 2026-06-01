@@ -18,13 +18,15 @@ class WindowsAdapter(DeviceAdapter):
             spi_version=SPI_VERSION,
             adapter_version="1.0.0",
             family="windows",
-            display_name="Windows Server (EC2 + SSM)",
+            display_name="Windows (EC2 + SSM)",
             capabilities=DeviceCapabilities(
-                observe=["ax_tree", "screenshot"],
-                interact=["click", "type", "key", "scroll"],
+                observe=["screenshot", "ax_tree"],
+                interact=["click", "double_click", "right_click", "mouse_move",
+                          "drag", "scroll", "cursor_position", "type", "key"],
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=True,
+                screen_recording=True,
             ),
             required_providers=["aws_ec2", "ssm"],
         )
@@ -34,6 +36,10 @@ class WindowsAdapter(DeviceAdapter):
         Launch EC2 Windows Server 2022 AMI.
         SSM bootstrap: install Python 3.12, runtime agent, enable UIA.
         """
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.windows.local_provision import provision as _local_provision
+            return await _local_provision(device, template)
+
         import boto3
         workspace_id = str(getattr(device, "workspace_id", ""))
         device_id = str(getattr(device, "id", ""))
@@ -78,6 +84,10 @@ class WindowsAdapter(DeviceAdapter):
         return {"instance_id": instance_id, "region": "us-east-1"}
 
     async def terminate(self, device: object) -> None:
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.windows.local_provision import terminate as _local_terminate
+            return await _local_terminate(device)
+
         if not getattr(device, "provider_ids_json", None):
             return
         ids = json.loads(device.provider_ids_json)  # type: ignore[attr-defined]

@@ -53,21 +53,17 @@ app.mount("/mcp", mcp_server.streamable_http_app())
 async def register_adapters() -> None:
     from app.adapters.registry import AdapterRegistry
     from app.adapters.linux.adapter import LinuxAdapter
-    from app.adapters.browser.adapter import BrowserAdapter
     from app.adapters.android.adapter import AndroidAdapter
     from app.adapters.windows.adapter import WindowsAdapter
     from app.adapters.macos.adapter import MacOSAdapter
     from app.adapters.ios_sim.adapter import IOSSimulatorAdapter
-    from app.adapters.ios_real.adapter import IOSRealAdapter
 
     AdapterRegistry.reset()
     for adapter_class in [
         LinuxAdapter,
-        BrowserAdapter,
         AndroidAdapter,
         WindowsAdapter,
         MacOSAdapter,
         IOSSimulatorAdapter,
-        IOSRealAdapter,
     ]:
         AdapterRegistry.register(adapter_class)

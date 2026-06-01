@@ -24,17 +24,23 @@ class MacOSAdapter(DeviceAdapter):
             family="macos",
             display_name="macOS (EC2 mac2.metal Dedicated Host)",
             capabilities=DeviceCapabilities(
-                observe=["ax_tree", "screenshot"],
-                interact=["click", "type", "key", "scroll"],
+                observe=["screenshot", "ax_tree"],
+                interact=["click", "double_click", "right_click", "mouse_move",
+                          "drag", "scroll", "cursor_position", "type", "key"],
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=False,
+                screen_recording=True,
             ),
             required_providers=["aws_ec2_dedicated_host", "ssm"],
         )
 
     async def provision(self, device: object, template: object) -> dict:
         """Allocate EC2 Dedicated Host (mac2.metal), launch Mac instance, bootstrap agent."""
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.macos.local_provision import provision as _local_provision
+            return await _local_provision(device, template)
+
         import boto3
         workspace_id = str(getattr(device, "workspace_id", ""))
         device_id = str(getattr(device, "id", ""))
@@ -89,6 +95,10 @@ class MacOSAdapter(DeviceAdapter):
 
     async def terminate(self, device: object) -> None:
         """Terminate instance. Warn if dedicated host < 24h old (still billed)."""
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.macos.local_provision import terminate as _local_terminate
+            return await _local_terminate(device)
+
         if not getattr(device, "provider_ids_json", None):
             return
         ids = json.loads(device.provider_ids_json)  # type: ignore[attr-defined]
@@ -115,8 +125,5 @@ class MacOSAdapter(DeviceAdapter):
         return await observe_macos(device, tier)
 
     async def act(self, device: object, action: str, params: dict) -> object:
-        from app.adapters.spi import CapabilityUnsupportedError
-        if action not in self.manifest().capabilities.interact:
-            raise CapabilityUnsupportedError(action, "macos")
-        # macOS action dispatch via SSM AppleScript/cliclick
-        return {"success": True, "action": action}
+        from app.adapters.macos.interaction import act_macos
+        return await act_macos(device, action, params)

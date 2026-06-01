@@ -98,36 +98,6 @@ async def _run_linux_lifecycle(device_id: uuid.UUID, account_id: uuid.UUID, regi
                     pass
 
 
-async def _run_browser_lifecycle(device_id: uuid.UUID) -> None:
-    """Background task: provision a local browser session."""
-    from app.core.db import engine
-    from sqlmodel import Session
-
-    with Session(engine) as db:
-        device = db.get(Device, device_id)
-        template = db.get(DeviceTemplate, device.template_id) if device and device.template_id else None
-        if not device or not template:
-            return
-
-        from app.adapters.browser.adapter import BrowserAdapter
-
-        fsm = get_device_fsm(device, db)
-        adapter = BrowserAdapter()
-
-        try:
-            fsm.transition("preflight_pass")
-            fsm.transition("provision_done")
-            await adapter.provision(device, template)
-            fsm.transition("agent_ready")
-        except Exception:
-            device = db.get(Device, device_id)
-            if device:
-                try:
-                    get_device_fsm(device, db).transition("fail")
-                except Exception:
-                    pass
-
-
 @router.post("/", response_model=DevicePublic, status_code=202)
 def create_device(
     db: SessionDep, body: DeviceCreate, background: BackgroundTasks
@@ -164,8 +134,6 @@ def create_device(
 
     if template.family == "linux" and account:
         background.add_task(_run_linux_lifecycle, device.id, account.id, region)
-    elif template.family == "browser":
-        background.add_task(_run_browser_lifecycle, device.id)
 
     return _to_public(device)
 
@@ -267,20 +235,6 @@ def terminate_device(db: SessionDep, device_id: uuid.UUID, background: Backgroun
                     get_device_fsm(d, inner_db).transition("terminate_done")
 
             background.add_task(_terminate_bg, device.id)
-
-    elif device.family == "browser":
-        async def _terminate_browser(device_id: uuid.UUID) -> None:
-            from app.adapters.browser.adapter import BrowserAdapter
-            adapter = BrowserAdapter()
-            from app.core.db import engine
-            from sqlmodel import Session
-            with Session(engine) as inner_db:
-                d = inner_db.get(Device, device_id)
-                if d:
-                    await adapter.terminate(d)
-                    get_device_fsm(d, inner_db).transition("terminate_done")
-
-        background.add_task(_terminate_browser, device.id)
 
     return _to_public(device)
 

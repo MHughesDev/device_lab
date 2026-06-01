@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Literal
 from unittest.mock import MagicMock
 
 
@@ -11,9 +12,24 @@ class FakeDevice:
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     workspace_id: uuid.UUID = field(default_factory=uuid.uuid4)
     family: str = "linux"
+    location: str = "cloud"
     state: str = "ready"
     screen_version: int = 0
     provider_ids_json: str = '{"instance_id": "i-fake", "region": "us-east-1"}'
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass
+class FakeLocalDevice:
+    """FakeDevice pre-set for location=local with a Docker container_id."""
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    workspace_id: uuid.UUID = field(default_factory=uuid.uuid4)
+    family: str = "linux"
+    location: str = "local"
+    state: str = "ready"
+    screen_version: int = 0
+    provider_ids_json: str = '{"container_id": "fake-container-id"}'
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 

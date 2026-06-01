@@ -16,6 +16,7 @@ updated: "2026-05-17"
 |--------|-------|--------|------|
 | [0001](0001-initial-template-architecture.md) | Initial template architecture | Accepted | 2026-05-17 |
 | [0002](0002-devicelab-product-default-overrides.md) | DeviceLab product default overrides | Accepted | 2026-05-17 |
+| [0003](0003-local-hosting-architecture.md) | Local hosting architecture | Proposed | 2026-06-01 |
 
 ## Adding a new ADR
 

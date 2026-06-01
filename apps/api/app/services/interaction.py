@@ -21,30 +21,6 @@ class TargetNotFound(Exception): ...
 class ActionTimeout(Exception): ...
 
 
-async def _resolve_target(device: Device, target: str) -> str:
-    """Resolve a semantic target (accessible name → role → selector → coords)."""
-    if device.family == "browser":
-        from app.adapters.browser.adapter import _sessions
-        session = _sessions.get(str(device.id))
-        if session and session._page:
-            page = session._page
-            # Try accessible name
-            try:
-                el = await page.get_by_label(target).first.element_handle()  # type: ignore
-                if el:
-                    return target
-            except Exception:
-                pass
-            # Try text
-            try:
-                el = await page.get_by_text(target, exact=False).first.element_handle()  # type: ignore
-                if el:
-                    return target
-            except Exception:
-                pass
-    return target  # pass through; adapter will handle final resolution
-
-
 async def execute_action(
     db: Session,
     device_id: uuid.UUID,
@@ -121,49 +97,10 @@ async def execute_action(
 
 
 async def _dispatch_action(device: Device, action: str, params: dict) -> None:
-    if device.family == "browser":
-        await _browser_action(device, action, params)
-    elif device.family == "linux":
+    if device.family == "linux":
         await _linux_action(device, action, params)
     else:
         raise NotImplementedError(f"Interaction not implemented for family '{device.family}'")
-
-
-async def _browser_action(device: Device, action: str, params: dict) -> None:
-    from app.adapters.browser.adapter import _sessions
-    session = _sessions.get(str(device.id))
-    if not session or session._page is None:
-        raise DeviceNotReady("No active browser session")
-    page = session._page
-
-    if action == "navigate":
-        await page.goto(params.get("url", ""))  # type: ignore
-    elif action == "click":
-        target = params.get("target", "")
-        try:
-            await page.click(target)  # type: ignore
-        except Exception as e:
-            raise TargetNotFound(str(e)) from e
-    elif action == "type_text":
-        target = params.get("target", "body")
-        text = params.get("text", "")
-        await page.fill(target, text)  # type: ignore
-    elif action == "fill_form":
-        for selector, value in params.get("fields", {}).items():
-            await page.fill(selector, str(value))  # type: ignore
-    elif action == "scroll":
-        direction = params.get("direction", "down")
-        amount = params.get("amount", 300)
-        delta_y = amount if direction == "down" else -amount
-        await page.evaluate(f"window.scrollBy(0, {delta_y})")  # type: ignore
-    elif action == "select_option":
-        await page.select_option(params.get("target", ""), params.get("value", ""))  # type: ignore
-    elif action == "wait_for":
-        condition = params.get("condition", "")
-        timeout = params.get("timeout_ms", 5000)
-        await page.wait_for_selector(condition, timeout=timeout)  # type: ignore
-    else:
-        raise NotImplementedError(f"Browser action '{action}' not implemented")
 
 
 async def _linux_action(device: Device, action: str, params: dict) -> None:

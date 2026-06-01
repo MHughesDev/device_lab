@@ -58,11 +58,13 @@ class LinuxAdapter(DeviceAdapter):
             family="linux",
             display_name="Linux (EC2 + SSM)",
             capabilities=DeviceCapabilities(
-                observe=["ax_tree", "screenshot"],
-                interact=["click", "type", "key", "scroll", "raw_shell"],
+                observe=["screenshot", "ax_tree"],
+                interact=["click", "double_click", "right_click", "mouse_move",
+                          "drag", "scroll", "cursor_position", "type", "key"],
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=True,
+                screen_recording=True,
                 dangerous_actions=["raw_shell"],
             ),
             required_providers=["aws_ec2", "ssm"],
@@ -76,11 +78,8 @@ class LinuxAdapter(DeviceAdapter):
         return await observe_device(device, tier)
 
     async def act(self, device: object, action: str, params: dict) -> object:
-        from app.adapters.spi import CapabilityUnsupportedError
-        if action not in self.manifest().capabilities.interact:
-            raise CapabilityUnsupportedError(action, "linux")
-        from app.services.interaction import act_on_device
-        return await act_on_device(device, action, params)
+        from app.adapters.linux.interaction import act_linux
+        return await act_linux(device, action, params)
 
     async def snapshot(self, device: object) -> object:
         from app.services.snapshots import create_snapshot
@@ -94,6 +93,10 @@ class LinuxAdapter(DeviceAdapter):
         return _AMI_MAP.get(self._region, _AMI_MAP["us-east-1"])
 
     async def provision(self, device: Device, template: DeviceTemplate) -> ProviderIds:
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.linux.local_provision import provision as local_provision
+            return await local_provision(device, template)  # type: ignore[return-value]
+
         workspace_id = str(device.workspace_id)
         device_id = str(device.id)
         template_name = template.name
@@ -165,6 +168,11 @@ class LinuxAdapter(DeviceAdapter):
         self._client.send_ssm_command(instance_id, commands)
 
     async def terminate(self, device: Device) -> None:
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.linux.local_provision import terminate as local_terminate
+            await local_terminate(device)
+            return
+
         if not device.provider_ids_json:
             return
         ids = json.loads(device.provider_ids_json)

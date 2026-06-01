@@ -18,10 +18,13 @@ class ObserveCapabilities(BaseModel):
 
 class InteractCapabilities(BaseModel):
     click: bool = False
-    type_text: bool = False
-    fill_form: bool = False
-    select: bool = False
+    double_click: bool = False
+    right_click: bool = False
+    mouse_move: bool = False
+    drag: bool = False
     scroll: bool = False
+    cursor_position: bool = False
+    type: bool = False
     key: bool = False
 
 
@@ -45,6 +48,34 @@ class NetworkCapabilities(BaseModel):
     inject: bool = False
 
 
+class ScreenRecordingCapabilities(BaseModel):
+    supported: bool = False
+    # Maximum recording duration the adapter enforces (0 = unlimited by adapter)
+    max_duration_seconds: int = 0
+    # Container format the adapter produces
+    output_format: str = "mp4"
+
+
+class SystemCapabilities(BaseModel):
+    """Shell, clipboard, app launch, filesystem, window/process management."""
+    run_shell: bool = False
+    key_hold: bool = False       # key_down / key_up
+    clipboard: bool = False      # get_clipboard / set_clipboard
+    launch_app: bool = False
+    wait_for: bool = False
+    filesystem: bool = False     # read_file / write_file / list_directory
+    processes: bool = False      # list_processes / kill_process
+    windows: bool = False        # list_windows / focus_window / resize_window
+    screen_size: bool = False    # get_screen_size
+
+
+class MobileCapabilities(BaseModel):
+    """Touch gestures and hardware buttons — applicable to android and ios_sim."""
+    long_press: bool = False
+    pinch: bool = False
+    press_button: bool = False
+
+
 class DeviceCapabilities(BaseModel):
     lifecycle: LifecycleCapabilities = LifecycleCapabilities()
     observe: ObserveCapabilities = ObserveCapabilities()
@@ -52,30 +83,95 @@ class DeviceCapabilities(BaseModel):
     read_content: ReadCapabilities = ReadCapabilities()
     files: FileCapabilities = FileCapabilities()
     network: NetworkCapabilities = NetworkCapabilities()
+    screen_recording: ScreenRecordingCapabilities = ScreenRecordingCapabilities()
+    system: SystemCapabilities = SystemCapabilities()
+    mobile: MobileCapabilities = MobileCapabilities()
     recipes: bool = False
     streaming: bool = False
     dangerous_mode: bool = False
 
 
-LINUX_CAPABILITIES = DeviceCapabilities(
-    lifecycle=LifecycleCapabilities(provision=True, stop=True, start=True, terminate=True),
-    observe=ObserveCapabilities(ax_tree=True, ocr=True, screenshot=True),
-    interact=InteractCapabilities(click=True, type_text=True, fill_form=True, select=True, scroll=True, key=True),
-    read_content=ReadCapabilities(text=True, headings=True, tables=True, links=True, regions=True),
-    files=FileCapabilities(upload=True, download=True, path_read=True),
-    network=NetworkCapabilities(proxy=True, capture=True),
+_FULL_INTERACT = InteractCapabilities(
+    click=True, double_click=True, right_click=True, mouse_move=True,
+    drag=True, scroll=True, cursor_position=True, type=True, key=True,
 )
 
-BROWSER_CAPABILITIES = DeviceCapabilities(
+_TOUCH_INTERACT = InteractCapabilities(
+    # Touchscreen: no right_click, mouse_move, or cursor_position
+    click=True, double_click=True, drag=True, scroll=True, type=True, key=True,
+)
+
+_FULL_SYSTEM = SystemCapabilities(
+    run_shell=True, key_hold=True, clipboard=True, launch_app=True, wait_for=True,
+    filesystem=True, processes=True, windows=True, screen_size=True,
+)
+
+LINUX_CAPABILITIES = DeviceCapabilities(
+    lifecycle=LifecycleCapabilities(provision=True, stop=True, start=True, terminate=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_FULL_INTERACT,
+    files=FileCapabilities(upload=True, download=True, path_read=True),
+    network=NetworkCapabilities(proxy=True, capture=True),
+    screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
+    system=_FULL_SYSTEM,
+    streaming=True,
+)
+
+MACOS_CAPABILITIES = DeviceCapabilities(
     lifecycle=LifecycleCapabilities(provision=True, terminate=True),
-    observe=ObserveCapabilities(ax_tree=True, screenshot=True),
-    interact=InteractCapabilities(click=True, type_text=True, fill_form=True, select=True, scroll=True),
-    read_content=ReadCapabilities(text=True, headings=True, tables=True, links=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_FULL_INTERACT,
+    files=FileCapabilities(upload=True, download=True, path_read=True),
+    network=NetworkCapabilities(proxy=True, capture=True),
+    screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
+    system=_FULL_SYSTEM,
+    streaming=True,
+)
+
+WINDOWS_CAPABILITIES = DeviceCapabilities(
+    lifecycle=LifecycleCapabilities(provision=True, stop=True, start=True, terminate=True, snapshot=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_FULL_INTERACT,
+    files=FileCapabilities(upload=True, download=True, path_read=True),
+    network=NetworkCapabilities(proxy=True, capture=True),
+    screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
+    system=_FULL_SYSTEM,
+    streaming=True,
+)
+
+ANDROID_CAPABILITIES = DeviceCapabilities(
+    lifecycle=LifecycleCapabilities(provision=True, terminate=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_TOUCH_INTERACT,
+    network=NetworkCapabilities(proxy=True, capture=True),
+    screen_recording=ScreenRecordingCapabilities(supported=True, max_duration_seconds=180, output_format="mp4"),
+    system=SystemCapabilities(
+        run_shell=True, key_hold=True, filesystem=True,
+        processes=True, screen_size=True,
+    ),
+    mobile=MobileCapabilities(long_press=True, pinch=True, press_button=True),
+    streaming=True,
+)
+
+IOS_SIM_CAPABILITIES = DeviceCapabilities(
+    lifecycle=LifecycleCapabilities(provision=True, terminate=True, snapshot=True),
+    observe=ObserveCapabilities(screenshot=True),
+    interact=_TOUCH_INTERACT,
+    screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
+    system=SystemCapabilities(
+        run_shell=True, key_hold=True, launch_app=True, filesystem=True,
+        processes=True, screen_size=True,
+    ),
+    mobile=MobileCapabilities(long_press=True, press_button=True),
+    streaming=True,
 )
 
 FAMILY_CAPABILITIES: dict[str, DeviceCapabilities] = {
     "linux": LINUX_CAPABILITIES,
-    "browser": BROWSER_CAPABILITIES,
+    "macos": MACOS_CAPABILITIES,
+    "windows": WINDOWS_CAPABILITIES,
+    "android": ANDROID_CAPABILITIES,
+    "ios_sim": IOS_SIM_CAPABILITIES,
 }
 
 

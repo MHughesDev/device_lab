@@ -1,62 +1,100 @@
-# interaction.py — Android interaction via uiautomator2 (click, swipe, type, key, scroll)
+# interaction.py — Android interaction via adb (coordinate-based)
 from __future__ import annotations
-from app.adapters.spi import CapabilityUnsupportedError
+import base64
+import json
+import subprocess
 
-SUPPORTED_ACTIONS = {"click", "swipe", "type", "key", "scroll"}
+from app.adapters.spi import CapabilityUnsupportedError
+from app.adapters.android.system_ops import SYSTEM_ACTIONS, MOBILE_ACTIONS, handle_system_action, handle_mobile_action
+
+SUPPORTED_ACTIONS = {
+    "click", "double_click", "drag", "scroll", "type", "key",
+    # right_click, mouse_move, cursor_position not applicable on touchscreen
+} | SYSTEM_ACTIONS | MOBILE_ACTIONS
 
 
 async def act_android(device: object, action: str, params: dict) -> dict:
-    """Dispatch action to uiautomator2. Raises CapabilityUnsupportedError for unsupported actions."""
     if action not in SUPPORTED_ACTIONS:
         raise CapabilityUnsupportedError(action, "android")
+    if action in SYSTEM_ACTIONS:
+        return await handle_system_action(device, action, params)
+    if action in MOBILE_ACTIONS:
+        return await handle_mobile_action(device, action, params)
 
-    import uiautomator2 as u2  # type: ignore[import]
-    from app.adapters.android.observation import _get_adb_serial
-    adb_serial = _get_adb_serial(device)
-    d = u2.connect(adb_serial)
+    ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
+    adb_serial = ids.get("adb_serial", "emulator-5554")
+
+    x, y = params.get("x", 0), params.get("y", 0)
 
     if action == "click":
-        target = params.get("target")
-        if target:
-            _resolve_element(d, target).click()
-        else:
-            d.click(params.get("x", 0), params.get("y", 0))
-
-    elif action == "swipe":
-        d.swipe(
-            params.get("start_x", 0),
-            params.get("start_y", 0),
-            params.get("end_x", 0),
-            params.get("end_y", 0),
-            steps=params.get("steps", 10),
+        subprocess.run(["adb", "-s", adb_serial, "shell", "input", "tap", str(x), str(y)],
+                       capture_output=True, check=False)
+    elif action == "double_click":
+        subprocess.run(["adb", "-s", adb_serial, "shell", "input", "tap", str(x), str(y)],
+                       capture_output=True, check=False)
+        subprocess.run(["adb", "-s", adb_serial, "shell", "input", "tap", str(x), str(y)],
+                       capture_output=True, check=False)
+    elif action == "drag":
+        ex, ey = params.get("end_x", 0), params.get("end_y", 0)
+        duration_ms = params.get("duration_ms", 300)
+        subprocess.run(
+            ["adb", "-s", adb_serial, "shell", "input", "swipe",
+             str(x), str(y), str(ex), str(ey), str(duration_ms)],
+            capture_output=True, check=False,
         )
-
-    elif action == "type":
-        text = params.get("text", "")
-        target = params.get("target")
-        if target:
-            _resolve_element(d, target).set_text(text)
-        else:
-            d(focused=True).set_text(text)
-
-    elif action == "key":
-        keycode = params.get("keycode", "enter")
-        d.press(keycode)
-
     elif action == "scroll":
-        d(scrollable=True).scroll(steps=params.get("steps", 10))
+        direction = params.get("direction", "down")
+        amount = int(params.get("amount", 3)) * 100
+        # Translate scroll direction into swipe deltas
+        if direction == "down":
+            ex, ey = x, y - amount
+        elif direction == "up":
+            ex, ey = x, y + amount
+        elif direction == "right":
+            ex, ey = x - amount, y
+        else:  # left
+            ex, ey = x + amount, y
+        subprocess.run(
+            ["adb", "-s", adb_serial, "shell", "input", "swipe",
+             str(x), str(y), str(ex), str(ey), "200"],
+            capture_output=True, check=False,
+        )
+    elif action == "type":
+        # adb input text doesn't handle spaces well; use URL encoding
+        text = params.get("text", "").replace(" ", "%s")
+        subprocess.run(["adb", "-s", adb_serial, "shell", "input", "text", text],
+                       capture_output=True, check=False)
+    elif action == "key":
+        keycode = _to_android_keycode(params.get("key", "Return"))
+        subprocess.run(["adb", "-s", adb_serial, "shell", "input", "keyevent", keycode],
+                       capture_output=True, check=False)
 
     return {"success": True, "action": action}
 
 
-def _resolve_element(d: object, target: str) -> object:
-    """Resolve target string to uiautomator2 selector.
-    Priority: resource-id → content-desc → text → xpath."""
-    import uiautomator2 as u2  # type: ignore[import]
-    if d(resourceId=target).exists:
-        return d(resourceId=target)
-    if d(description=target).exists:
-        return d(description=target)
-    if d(text=target).exists:
-        return d(text=target)
-    return d.xpath(target)
+def _to_android_keycode(key: str) -> str:
+    mapping = {
+        "Return": "KEYCODE_ENTER", "Escape": "KEYCODE_ESCAPE",
+        "BackSpace": "KEYCODE_DEL", "Delete": "KEYCODE_FORWARD_DEL",
+        "Tab": "KEYCODE_TAB", "Home": "KEYCODE_HOME",
+        "Back": "KEYCODE_BACK", "Menu": "KEYCODE_MENU",
+        "ctrl+c": "KEYCODE_COPY", "ctrl+v": "KEYCODE_PASTE",
+        "ctrl+z": "KEYCODE_UNDO", "ctrl+a": "KEYCODE_SELECT_ALL",
+        "Up": "KEYCODE_DPAD_UP", "Down": "KEYCODE_DPAD_DOWN",
+        "Left": "KEYCODE_DPAD_LEFT", "Right": "KEYCODE_DPAD_RIGHT",
+    }
+    return mapping.get(key, key)
+
+
+async def screenshot_b64(device: object) -> str:
+    """Capture screenshot via adb exec-out, return base64-encoded PNG."""
+    ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
+    adb_serial = ids.get("adb_serial", "emulator-5554")
+    result = subprocess.run(
+        ["adb", "-s", adb_serial, "exec-out", "screencap", "-p"],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        return base64.b64encode(result.stdout).decode()
+    return ""
