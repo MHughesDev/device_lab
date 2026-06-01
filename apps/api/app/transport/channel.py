@@ -69,7 +69,8 @@ class ChannelFactory:
             if family == "linux":
                 from app.transport.docker_exec import DockerExecChannel
                 container_id = ids.get("container_id", "")
-                return DockerExecChannel(container_id)
+                device_id = str(getattr(device, "id", "")) or None
+                return DockerExecChannel(container_id, device_id=device_id)
             if family == "android":
                 from app.transport.adb import ADBChannel
                 adb_serial = ids.get("adb_serial", "emulator-5554")
