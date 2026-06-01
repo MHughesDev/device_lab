@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import cloud_accounts, cost, devices, health, login, private, recipes, replay, secrets, snapshots, stream, templates, test_runs, users, utils, workspace
+from app.api.routes import cloud_accounts, cost, device_logs, devices, health, login, private, recipes, replay, secrets, snapshots, stream, templates, test_runs, users, utils, workspace
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -12,6 +12,7 @@ api_router.include_router(workspace.router)
 api_router.include_router(cloud_accounts.router)
 api_router.include_router(templates.router)
 api_router.include_router(devices.router)
+api_router.include_router(device_logs.router)
 api_router.include_router(secrets.router)
 api_router.include_router(recipes.router)
 api_router.include_router(stream.router)
