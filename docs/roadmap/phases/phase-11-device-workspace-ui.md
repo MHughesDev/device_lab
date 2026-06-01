@@ -16,7 +16,7 @@ updated: "2026-06-01"
 Deliver the **browser-like device workspace**: each device is a named tab; a `+` button opens the
 **New / Existing** create wizard; each tab shows a **screen pane** (live when interactive, a headless
 placeholder otherwise) over a **backend-process log panel**; and a per-device **options menu**
-exposes the full runtime control set. Names are editable and shown on tabs and in the snapshot
+exposes the full runtime control set. Names are editable and shown on tabs and in the manifest
 picker. This is the human face of Phases 08–10.
 
 Read first: `interactive-workspace-plan.md` (all decisions). Stack: React 19 + Vite + TanStack
@@ -30,7 +30,7 @@ Router/Query; shadcn-style primitives already exist (`tabs`, `dialog`, `dropdown
 - **Log panel, create wizard, options-menu shell, naming** depend only on **Phase 08** (device fields
   + log-stream route) → can start immediately, in parallel with Phase 09.
 - **Live screen pane** (WebRTC client) gates on **Phase 09** (attach/detach + real stream).
-- **Snapshot picker / Create-from-snapshot** gates on **Phase 10** (snapshot library + create path).
+- **Manifest picker / Create-from-manifest** gates on **Phase 10** (manifest registry + create path).
 
 ---
 
@@ -127,7 +127,7 @@ Persist open-tab ids + active tab to `localStorage`; on reload, reopen tabs for 
 
 **Files:** `apps/web/src/components/devices/CreateChooser.tsx` (new); reuse `dialog`.
 
-`+` opens a dialog: **New** vs **Existing**. Existing → snapshot picker (11-05); New → wizard
+`+` opens a dialog: **New** vs **Existing**. Existing → manifest picker (11-05); New → wizard
 (11-04). Back/cancel supported. Matches the brief's two-step gate.
 
 **Tests:** `chooser routes New→wizard and Existing→picker`, `back returns to chooser`.
@@ -151,7 +151,7 @@ a tab.
 
 ---
 
-## Task 11-05: Existing-snapshot picker
+## Task 11-05: Existing-manifest picker
 
 **Files:** `apps/web/src/components/devices/ManifestPicker.tsx` (new). **Depends on Phase 10.**
 

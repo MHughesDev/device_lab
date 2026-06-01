@@ -9,8 +9,9 @@ updated: "2026-06-01"
 
 # Interactive Device Workspace — Long-term Plan (Phases 08–12)
 
-**Progress:** Phases 01–07 complete (local hosting landed). This initiative builds the
-human-facing, low-latency interactive layer on top of the local-first runtime.
+**Progress: 0%** `░░░░░░░░░░` — 0 of 5 phases complete (08–12 planned). Phases 01–07 (local
+hosting) already landed; this initiative builds the human-facing, low-latency interactive layer
+on top of the local-first runtime.
 
 ## Strategic outcome
 
@@ -18,7 +19,7 @@ Turn DeviceLab from an *agent-and-list* tool into an **interactive device worksp
 feels like a web browser: a user opens, names, and closes device "tabs," each tab showing
 a live (or deliberately headless) screen with a backend-process log panel beneath it. Every
 device remains fully agent-operable over MCP whether or not a human is watching. Streaming is
-**low-latency and hardware-accelerated**, snapshots make devices instant to recreate, and the
+**low-latency and hardware-accelerated**, environment manifests make devices reproducible, and the
 host's memory is **accounted for and never over-committed**.
 
 This plan assumes and extends the design in `docs/design/streaming-dream-build.md` (the media
@@ -93,7 +94,7 @@ per-device event stream** (`DeviceLogEvent`) multiplexing:
 3. Transport/channel command activity (adb / ssh / docker-exec / ssm) — **secrets redacted**.
 4. Stream-session events (negotiate, ICE state, keyframe, bitrate change, reconnect, teardown).
 5. MCP tool invocations against this device (tool, role, allow/deny decision) — links to Evidence.
-6. Recording & snapshot events; resource-ledger events (admitted / reclaimed N MB).
+6. Recording & manifest-capture events; resource-ledger events (reserved / released N MB).
 7. Warnings & errors.
 
 Delivered to the UI over a per-device **WebSocket/SSE** feed backed by a bounded ring buffer
@@ -155,24 +156,24 @@ Capture (from running device)
 
 | Phase | Theme | Key deliverable |
 |-------|-------|-----------------|
-| **08** | Display & Resource Foundations | Real framebuffers for every family; the 4-axis device model (`name`, `display_mode`, `mcp_exposed`); Host Resource Ledger (no over-commit, RAM reclaim); per-device structured log bus |
-| **09** | Low-Latency Streaming Media Layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family hardware capture+encode (Android scrcpy first); input injection; attach/detach; quality profiles; local-vs-cloud ICE |
+| **08** | Display & Resource Foundations | Real framebuffers for every family; the 4-axis device model (`name`, `display_mode`, `mcp_exposed`); Host Resource Ledger (no over-commit, no suspended state); per-device structured log bus |
+| **09** | Low-Latency Streaming Media Layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family hardware capture+encode (Android scrcpy first); video+audio+input; attach/detach; quality profiles; local-vs-cloud ICE |
 | **10** | Device Manifests & Environment Registry | Declarative `DeviceManifest` (named environment spec, not a disk image); manifest registry; capture-from-device; create-from-manifest; import/export |
-| **11** | Device Workspace UI (browser-tab UX) | Tabbed workspace shell; New/Existing create wizard; per-tab screen pane + log panel; full per-device options menu; naming UI; snapshot picker; tab session restore |
-| **12** | Root & Cloud Infra Settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, snapshots, security — wired and validated |
+| **11** | Device Workspace UI (browser-tab UX) | Tabbed workspace shell; New/Existing create wizard; per-tab screen pane + log panel; full per-device options menu; naming UI; manifest picker; tab session restore |
+| **12** | Root & Cloud Infra Settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, manifests, security — wired and validated |
 
 ### Dependency graph
 
 ```
 08 ──► 09 ──► 11 (screen pane)
-  └──► 10 ──► 11 (snapshot picker, create-from-snapshot)
+  └──► 10 ──► 11 (manifest picker, create-from-manifest)
 08 ──────────► 11 (log panel, create wizard, options shell can start early)
-08 ──► 12 (host budget settings)  ;  09 ──► 12 (streaming settings)  ;  10 ──► 12 (snapshot settings)
+08 ──► 12 (host budget settings)  ;  09 ──► 12 (streaming settings)  ;  10 ──► 12 (manifest settings)
 ```
 
 Phase 11's **log panel, create wizard, and options-menu shell** depend only on Phase 08, so the
 frontend can begin in parallel with Phase 09/10; the **live screen pane** gates on Phase 09 and the
-**snapshot picker** on Phase 10.
+**manifest picker** on Phase 10.
 
 ---
 
@@ -201,12 +202,12 @@ one-page ADR per the `oss-repo-candidates.md` discipline.
   to loopback only; local ICE uses a single `127.0.0.1` host candidate (no STUN/TURN locally).
 - **No plaintext secrets in model context** — cloud creds via `keyring`/SecretRef (Phase 12); log
   bus redacts secrets (D-4).
-- **Append-only audit log** — MCP-toggle, attach-session, snapshot, terminate, and settings changes
-  emit audit events; never mutate existing entries.
+- **Append-only audit log** — MCP-toggle, attach-session, manifest-capture, terminate, and settings
+  changes emit audit events; never mutate existing entries.
 - **BYOC hard boundary** — cloud streaming encodes on the user's EC2; coturn deploys into the user's
   VPC; DeviceLab hosts nothing.
-- **Adapter SPI** — `MediaSource`/`InputSink`/snapshot ops are per-family plugins behind the SPI;
-  no family-specific logic in core.
+- **Adapter SPI** — `MediaSource`/`InputSink`/manifest-capture ops are per-family plugins behind the
+  SPI; no family-specific logic in core.
 
 ---
 
@@ -239,4 +240,4 @@ A phase is complete when:
 | `vz` requires native (Swift/PyObjC) glue that complicates the Python control plane | Isolate behind a small sidecar helper with a typed RPC; keep the Python SPI clean |
 | Memory ledger drift after crashes leaks reservations | Persist reservations; reconcile against `psutil`/hypervisor reality on startup (extends Phase 07) |
 | Tabbed UI tempts us to gold-plate before streaming works | UI log panel + wizard ship on Phase 08; the live pane is explicitly gated on Phase 09 acceptance budgets |
-| Snapshot RAM-state restore is fragile per family | Ship disk-only snapshots first; RAM-state ("sleep") is a separate, later task per family with a clean fallback to cold boot |
+| Users assume a manifest restores their data (DB rows, files) and lose state | Manifests are recipe-only by decision (D-7); UI labels "Capture environment manifest" as environment-not-data; docs point to Phase 05 EBS snapshot as the only byte-for-byte path (cloud Linux) |

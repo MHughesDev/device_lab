@@ -143,7 +143,7 @@ pure text specifications.
 (new).
 
 CRUD: `list`, `get`, `create`, `update` (rename / edit spec), `delete`. `GET /api/v1/manifests?
-family=&location=` powers the "Existing" snapshot picker in the wizard (11-05). `PATCH /manifests/
+family=&location=` powers the "Existing" manifest picker in the wizard (11-05). `PATCH /manifests/
 {id}` accepts `name` and/or `spec_json`.
 
 **Tests:** `test_registry_lists_by_family`, `test_registry_rename`, `test_registry_delete_not_in_use`.

@@ -53,7 +53,7 @@ Batch B (framebuffer fixes — the core bug)
 
 Batch C (Host Resource Ledger — extends Phase 07 scheduler)
   08-07  ResourceLedger: durable committed-vs-total RAM/vCPU/disk accounting
-  08-08  Reservation lifecycle: admit / reclaim-on-sleep / release-on-terminate
+  08-08  Reservation lifecycle: reserve-on-provision / release-on-terminate
   08-09  Startup reconciliation of ledger vs psutil/hypervisor reality
 
 Batch D (per-device log bus)
@@ -83,7 +83,7 @@ Migration backfills existing rows: `name=NULL`, `display_mode='headless'`, `mcp_
 
 **Tests:** `test_device_defaults_headless_mcp_on`, `test_migration_backfills_existing_devices`.
 
-**Do not:** add streaming fields here (Phase 09); do not add snapshot/name to `Snapshot` (Phase 10).
+**Do not:** add streaming fields here (Phase 09); do not add the `DeviceManifest` model (Phase 10).
 
 ---
 
@@ -93,7 +93,7 @@ Migration backfills existing rows: `name=NULL`, `display_mode='headless'`, `mcp_
 
 Extend `DeviceCreate` with `name: str | None`, `location: str = "local"`, `display_mode: str =
 "headless"`, `mcp_exposed: bool = True`. Surface all four (+ `name`) on `DevicePublic`. The
-create-from-snapshot path is Phase 10 — here only the "New" axes are wired. `DevicePublic.title`
+create-from-manifest path is Phase 10 — here only the "New" axes are wired. `DevicePublic.title`
 helper returns `name or f"{family} · {id8}"` (D-6 fallback).
 
 **Tests:** `test_create_device_accepts_four_axes`, `test_device_public_title_falls_back`.
@@ -242,7 +242,7 @@ class DeviceLogEvent(SQLModel, table=True):
     device_id: uuid.UUID = Field(index=True)
     ts: datetime = ...
     level: str          # debug|info|warn|error
-    source: str         # lifecycle|provisioner|transport|stream|mcp|recording|snapshot|ledger
+    source: str         # lifecycle|provisioner|transport|stream|mcp|recording|manifest|ledger
     message: str
     fields_json: str | None   # structured extras, secret-redacted
 ```
@@ -295,7 +295,7 @@ operator auth. Supports `?level=` and `?source=` filters and `?since=` cursor.
 **Files:** edit `docs/operations/local-hosting.md`, `docs/operations/local-host-prerequisites.md`.
 
 Document: the framebuffer model per family (and that **headless ≠ no framebuffer**, D-2); Xvfb /
-virtio-vga prerequisites; the Host Resource Ledger (budget, headroom, reclaim-on-sleep); the
+virtio-vga prerequisites; the Host Resource Ledger (budget, headroom, reserve/release); the
 per-device log feed and how to tail it. Add an `Xvfb` row to the Linux prereqs.
 
 ---

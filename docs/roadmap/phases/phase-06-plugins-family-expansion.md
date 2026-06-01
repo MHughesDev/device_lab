@@ -2,9 +2,9 @@
 doc_id: "24.7"
 title: "Phase 06 — Adapter SPI + family expansion"
 section: "Roadmap"
-status: "planned"
-completion: "0%"
-updated: "2026-05-31"
+status: "complete"
+completion: "100%"
+updated: "2026-06-01"
 ---
 
 # Phase 06 — Adapter SPI + Family Expansion

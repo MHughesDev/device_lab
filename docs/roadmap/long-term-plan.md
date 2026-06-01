@@ -3,13 +3,13 @@ doc_id: "24.1"
 title: "DeviceLab long-term implementation plan"
 section: "Roadmap"
 status: "current"
-completion: "67%"
-updated: "2026-05-31"
+completion: "58%"
+updated: "2026-06-01"
 ---
 
 # DeviceLab — Long-term Implementation Plan
 
-**Progress:** six phases complete; Phase 07 (local hosting) planned
+**Progress: 58%** `██████░░░░` — 7 of 12 phases complete (01–07); Phase 08 next
 
 ## Strategic outcome
 
@@ -89,8 +89,8 @@ Every major subsystem is backed by a specific open-source repo. This table is th
 ### Interactive Device Workspace initiative (Phases 08–12)
 
 Detailed in `docs/roadmap/interactive-workspace-plan.md`. Builds the human-facing, low-latency
-interactive layer (browser-tab device workspace, real hardware-accelerated streaming, snapshots,
-memory accounting) on top of the local-first runtime.
+interactive layer (browser-tab device workspace, real hardware-accelerated streaming, environment
+manifests, memory accounting) on top of the local-first runtime.
 
 | Phase | Status | Theme | Key deliverable |
 |-------|--------|-------|-----------------|
@@ -98,7 +98,7 @@ memory accounting) on top of the local-first runtime.
 | 09 | ⬜ planned | Low-latency streaming media layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family HW capture+encode (Android scrcpy first); attach/detach; quality profiles; local-vs-cloud ICE |
 | 10 | ⬜ planned | Device manifests & environment registry | Declarative `DeviceManifest` (named env spec, not a disk image); manifest registry; capture-from-device; create-from-manifest (fresh base + install from spec); import/export |
 | 11 | ⬜ planned | Device workspace UI | Browser-tab UX; New/Existing create wizard; per-tab screen pane + log panel; full per-device options menu; naming |
-| 12 | ⬜ planned | Root & cloud infra settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, snapshots, security |
+| 12 | ⬜ planned | Root & cloud infra settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, manifests, security |
 
 ---
 
@@ -150,7 +150,7 @@ User's AWS Account
 
 | Workstream | Requirement |
 |------------|-------------|
-| Data model | Stable entities: workspace, cloud account, template, device, session, snapshot, recipe, run, artifact, evidence, secret ref, cost estimate, audit event |
+| Data model | Stable entities: workspace, cloud account, template, device, session, snapshot (Phase 05 disk/EBS), device manifest (Phase 10 environment spec), recipe, run, artifact, evidence, secret ref, cost estimate, audit event |
 | Auth | Local operator auth + scoped MCP client roles; dangerous mode requires confirmation + audit |
 | Runtime protocol | mTLS channel, resumable commands, typed observation/action envelopes, stream negotiation, artifact upload |
 | Observability | Structured logs, lifecycle events, metrics (latency/cost/action success), trace correlation across MCP/API/runtime |

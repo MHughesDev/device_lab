@@ -15,7 +15,7 @@ updated: "2026-06-01"
 
 Give the operator a single **server-level settings** surface for the infrastructure and policy the
 application needs: cloud (AWS) connection details, the local host resource budget, streaming defaults,
-MCP defaults, snapshot storage, and security/audit configuration. All cloud secrets go through
+MCP defaults, manifest storage, and security/audit configuration. All cloud secrets go through
 `keyring`/SecretRef (no plaintext), and the control plane stays localhost-only. This phase wires
 settings into the services built in Phases 08–10.
 
@@ -29,10 +29,10 @@ settings.tsx`, `apps/api/app/core/config.py`.
 | Group | Keys (representative) | Backed by |
 |-------|----------------------|-----------|
 | **Cloud infra (AWS, BYOC)** | credential source (env/profile/role-arn via **SecretRef**), default region, VPC/subnet ids, default instance types per family, artifact S3 bucket, **coturn/STUN** endpoints + creds | `keyring`, CloudAccount, `stream/ice.py` (09-04) |
-| **Local host budget** | total RAM/vCPU/disk for devices, **reserved headroom %**, default placement policy, image + snapshot storage path, base image registry | ResourceLedger (08-07), placement (07-06) |
+| **Local host budget** | total RAM/vCPU/disk for devices, **reserved headroom %**, default placement policy, base image storage path, base image registry | ResourceLedger (08-07), placement (07-06) |
 | **Streaming** | default codec (H.264), bitrate caps (local/cloud), default display profile (smooth/sharp_text), max concurrent streams, WebCodecs-canvas opt-in default | stream profiles (09-15), gateway |
 | **MCP** | global enable, default per-device exposure, default role, session-token TTL, gateway bind host (**loopback enforced**) | mcp gateway, permissions |
-| **Snapshots** | storage path, retention, max count, compression/dedup | SnapshotLibrary (10-02) |
+| **Manifests** | manifest export/import dir, retention, max count, default import validation strictness | ManifestRegistry (10-02) |
 | **Security / audit** | audit log path, keyring backend, dangerous-mode policy, log-redaction patterns | audit_log, log bus (08-10) |
 
 ---
@@ -48,7 +48,7 @@ Batch A (settings backend)
 Batch B (wire into services)
   12-04  Streaming settings → ICE/profiles/bitrate caps
   12-05  MCP settings → exposure default, role default, token TTL, loopback bind guard
-  12-06  Snapshot + security/audit settings wiring
+  12-06  Manifest + security/audit settings wiring
 
 Batch C (frontend)
   12-07  Settings UI: grouped sections, secret-masked inputs, test-connection buttons
@@ -127,14 +127,15 @@ and a **loopback bind guard** that refuses any non-loopback MCP bind host (local
 
 ---
 
-## Task 12-06: Snapshot + security/audit wiring
+## Task 12-06: Manifest + security/audit wiring
 
-**Files:** wire SnapshotLibrary (10-02), audit log, log redaction to their groups.
+**Files:** wire ManifestRegistry (10-02), audit log, log redaction to their groups.
 
-Snapshot storage path/retention/max/compression; audit log path; keyring backend; dangerous-mode
-policy; configurable log-redaction patterns for the device log bus (08-10).
+Manifest export/import dir, retention, max count, import validation strictness; audit log path;
+keyring backend; dangerous-mode policy; configurable log-redaction patterns for the device log bus
+(08-10).
 
-**Tests:** `test_snapshot_retention_enforced`, `test_custom_redaction_pattern_applied`.
+**Tests:** `test_manifest_retention_enforced`, `test_custom_redaction_pattern_applied`.
 
 ---
 
@@ -165,7 +166,7 @@ Document every setting, its default, its effect, and the SecretRef handling; a f
 ## Exit criteria
 
 - An operator configures **all** required infra/policy from one settings surface: AWS (via SecretRef,
-  no plaintext), local host budget (live-wired to the ledger), streaming, MCP, snapshots, security.
+  no plaintext), local host budget (live-wired to the ledger), streaming, MCP, manifests, security.
 - Test-connection validates AWS and coturn.
 - Lowering the host budget below live commitments is guarded; MCP bind is loopback-guarded; secrets
   are never returned to the client or logged.
