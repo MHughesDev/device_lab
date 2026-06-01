@@ -84,7 +84,21 @@ Every major subsystem is backed by a specific open-source repo. This table is th
 | 04 | ✅ complete | Recipes, identity, streaming | Recipes execute repeatably; secrets never leave keychain; split WebRTC stream + input channel |
 | 05 | ✅ complete | Guardrails, artifacts, replay | Cost caps enforced; snapshots + test artifacts exist; evidence replay explains every action |
 | 06 | ✅ complete | Adapter SPI + family expansion | Versioned plugin contract; Android, Windows, macOS, iOS Sim added through adapters |
-| 07 | ⬜ planned | Local hosting | Channel transport abstraction + local scheduler + placement layer; host families on the local machine with no AWS account (ADR-0003) |
+| 07 | ✅ complete | Local hosting | Channel transport abstraction + local scheduler + placement layer; host families on the local machine with no AWS account (ADR-0003) |
+
+### Interactive Device Workspace initiative (Phases 08–12)
+
+Detailed in `docs/roadmap/interactive-workspace-plan.md`. Builds the human-facing, low-latency
+interactive layer (browser-tab device workspace, real hardware-accelerated streaming, snapshots,
+memory accounting) on top of the local-first runtime.
+
+| Phase | Status | Theme | Key deliverable |
+|-------|--------|-------|-----------------|
+| 08 | ⬜ planned | Display & resource foundations | Real framebuffers for every family; 4-axis device model (`name`/`display_mode`/`mcp_exposed`); Host Resource Ledger (no over-commit, RAM reclaim); per-device log bus |
+| 09 | ⬜ planned | Low-latency streaming media layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family HW capture+encode (Android scrcpy first); attach/detach; quality profiles; local-vs-cloud ICE |
+| 10 | ⬜ planned | Snapshots & persistence | Per-family snapshot create/restore; sleep/wake with RAM reclaim; snapshot library; create-from-snapshot; naming |
+| 11 | ⬜ planned | Device workspace UI | Browser-tab UX; New/Existing create wizard; per-tab screen pane + log panel; full per-device options menu; naming |
+| 12 | ⬜ planned | Root & cloud infra settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, snapshots, security |
 
 ---
 
