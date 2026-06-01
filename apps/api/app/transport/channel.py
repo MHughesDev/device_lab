@@ -67,9 +67,9 @@ class ChannelFactory:
         # local path — filled in per-family during Phase 07 task batches D–G
         if location == "local":
             if family == "linux":
-                raise NotImplementedError(
-                    "DockerExecChannel not yet implemented (task 07-08)"
-                )
+                from app.transport.docker_exec import DockerExecChannel
+                container_id = ids.get("container_id", "")
+                return DockerExecChannel(container_id)
             if family == "android":
                 raise NotImplementedError(
                     "ADBChannel not yet implemented (task 07-11)"
