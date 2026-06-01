@@ -66,11 +66,14 @@ class DeviceFSM:
     def transition(self, trigger: str, **kwargs) -> None:
         """Execute a named trigger and persist the resulting state.
 
-        For preflight_pass (requested→provisioning), runs the cost guardrail check
-        first and raises GuardrailBlocked if the hard cap would be exceeded.
+        For preflight_pass (requested→provisioning):
+          1. Runs the cost guardrail check (cloud devices).
+          2. Runs the local scheduler admission check (local devices).
+        On block, transitions to preflight_blocked instead.
         """
         if trigger == "preflight_pass":
             self._run_guardrail_check()
+            self._run_local_admission_check()
         getattr(self, trigger)()
         self._persist(self.state)  # type: ignore[attr-defined]
 
@@ -93,9 +96,33 @@ class DeviceFSM:
         except ImportError:
             pass
 
+    def _run_local_admission_check(self) -> None:
+        """For local devices, verify the host has sufficient resources.
+
+        Transitions to preflight_blocked with reason
+        `insufficient_host_resources` if the scheduler rejects.
+        """
+        if getattr(self._device, "location", "cloud") != "local":
+            return
+        try:
+            from app.services.local.scheduler import get_scheduler, ResourceEstimate
+            estimate = ResourceEstimate(ram_mb=512, vcpu=1, disk_mb=2048)
+            result = get_scheduler().admit(estimate)
+            if not result.allowed:
+                self._device.phase = result.reason
+                self.preflight_fail()  # type: ignore[attr-defined]
+                self._persist(self.state)  # type: ignore[attr-defined]
+                raise _LocalAdmissionBlocked(result.reason)
+        except ImportError:
+            pass
+
     @property
     def current_state(self) -> str:
         return str(self.state)  # type: ignore[attr-defined]
+
+
+class _LocalAdmissionBlocked(Exception):
+    """Raised when the local scheduler rejects a device provisioning request."""
 
 
 def get_device_fsm(device: Device, db: Session) -> DeviceFSM:
