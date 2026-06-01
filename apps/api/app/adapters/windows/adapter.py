@@ -36,6 +36,10 @@ class WindowsAdapter(DeviceAdapter):
         Launch EC2 Windows Server 2022 AMI.
         SSM bootstrap: install Python 3.12, runtime agent, enable UIA.
         """
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.windows.local_provision import provision as _local_provision
+            return await _local_provision(device, template)
+
         import boto3
         workspace_id = str(getattr(device, "workspace_id", ""))
         device_id = str(getattr(device, "id", ""))
@@ -80,6 +84,10 @@ class WindowsAdapter(DeviceAdapter):
         return {"instance_id": instance_id, "region": "us-east-1"}
 
     async def terminate(self, device: object) -> None:
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.windows.local_provision import terminate as _local_terminate
+            return await _local_terminate(device)
+
         if not getattr(device, "provider_ids_json", None):
             return
         ids = json.loads(device.provider_ids_json)  # type: ignore[attr-defined]
