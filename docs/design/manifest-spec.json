@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devicelab.local/schemas/manifest-spec.json",
+  "title": "DeviceManifest spec_json",
+  "description": "Declarative environment specification for a DeviceLab device. Records what is installed and configured — not disk state or application data.",
+  "type": "object",
+  "properties": {
+    "base_image": {
+      "type": "string",
+      "description": "Base Docker image or OS version (e.g. 'ubuntu:24.04', 'android-33')"
+    },
+    "display_resolution": {
+      "type": "string",
+      "pattern": "^\\d+x\\d+$",
+      "description": "Display resolution (e.g. '1920x1080')"
+    },
+    "env_vars": {
+      "type": "object",
+      "description": "Environment variables to set. Secret values are redacted on capture.",
+      "additionalProperties": { "type": "string" }
+    },
+    "install_steps": {
+      "type": "array",
+      "description": "Ordered list of installation steps. Executed during bootstrapping_agent phase.",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "apt", "pip", "npm_global", "shell", "env_vars",
+              "adb_install", "adb_shell",
+              "winget_install", "msi_install", "powershell",
+              "brew", "mas_install",
+              "xcrun_install"
+            ]
+          },
+          "packages":    { "type": "array", "items": { "type": "string" } },
+          "command":     { "type": "string" },
+          "script":      { "type": "string" },
+          "apk_path":    { "type": "string" },
+          "package_id":  { "type": "string" },
+          "version":     { "type": "string" },
+          "msi_path":    { "type": "string" },
+          "args":        { "type": "string" },
+          "app_path":    { "type": "string" },
+          "app_id":      { "type": ["string", "integer"] },
+          "vars":        { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      }
+    },
+    "startup_commands": {
+      "type": "array",
+      "description": "Shell commands to run after install_steps complete.",
+      "items": { "type": "string" }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form metadata (app name, version, capture source, warnings).",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "examples": [
+    {
+      "base_image": "ubuntu:24.04",
+      "display_resolution": "1920x1080",
+      "env_vars": { "NODE_ENV": "development" },
+      "install_steps": [
+        { "type": "apt", "packages": ["git", "curl", "python3"] },
+        { "type": "pip", "packages": ["pytest", "requests"] },
+        { "type": "shell", "command": "curl -fsSL https://deb.nodesource.com/setup_20.x | bash -" },
+        { "type": "npm_global", "packages": ["pnpm"] }
+      ],
+      "startup_commands": ["Xvfb :0 &", "openbox &"],
+      "metadata": { "app": "MyApp", "version": "2.3.1" }
+    }
+  ]
+}

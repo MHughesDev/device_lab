@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from sqlmodel import select
 
-from app.api.deps import SessionDep
+from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     CloudAccount,
     Device,
@@ -124,14 +124,23 @@ def create_device(
             raise HTTPException(status_code=404, detail="Cloud account not found")
         region = body.region or account.region
 
+    # Phase 10: create-from-manifest inherits name from manifest if not supplied
+    manifest = None
+    if body.manifest_id:
+        from app.models import DeviceManifest
+        manifest = db.get(DeviceManifest, body.manifest_id)
+        if not manifest:
+            raise HTTPException(status_code=404, detail="Manifest not found")
+
     device = Device(
         template_id=template.id,
         workspace_id=ws.id,
         family=template.family,
         location=body.location,
-        name=body.name,
+        name=body.name or (manifest.name if manifest else None),
         display_mode=body.display_mode,
         mcp_exposed=body.mcp_exposed,
+        source_manifest_id=body.manifest_id,
         state="requested",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -256,3 +265,51 @@ def device_heartbeat(db: SessionDep, device_id: uuid.UUID) -> Message:
     db.add(device)
     db.commit()
     return Message(message="ok")
+
+
+@router.post("/{device_id}/manifest/capture", status_code=201)
+async def capture_device_manifest(
+    db: SessionDep,
+    device_id: uuid.UUID,
+    _current_user: CurrentUser,
+) -> dict:
+    """Introspect a running device and save a new DeviceManifest in the registry."""
+    from app.adapters.spi import CapabilityUnsupportedError
+    from app.models import ManifestCreate
+    from app.services.manifest_registry import create_manifest
+    import json as _json
+
+    device = db.get(Device, device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    if device.state != "ready":
+        raise HTTPException(status_code=409, detail=f"Device is not ready (state={device.state})")
+
+    try:
+        from app.adapters.registry import AdapterRegistry
+        adapter_cls = AdapterRegistry.get(device.family)
+        # Instantiate without cloud credentials for local capture path
+        adapter = adapter_cls.__new__(adapter_cls)  # type: ignore[misc]
+        spec = await adapter.capture_manifest(device)
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"No adapter registered for family '{device.family}'")
+    except CapabilityUnsupportedError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Capture failed: {e}")
+
+    body = ManifestCreate(
+        workspace_id=device.workspace_id,
+        name=f"{device.name or device.family} (captured)",
+        family=device.family,
+        location=device.location,
+        description=f"Captured from device {device_id}",
+        spec_json=_json.dumps(spec),
+        source_device_id=device_id,
+    )
+    manifest = create_manifest(db, body)
+    return {
+        "manifest_id": str(manifest.id),
+        "name": manifest.title,
+        "family": manifest.family,
+    }

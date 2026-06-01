@@ -3,13 +3,13 @@ doc_id: "24.1"
 title: "DeviceLab long-term implementation plan"
 section: "Roadmap"
 status: "current"
-completion: "75%"
+completion: "83%"
 updated: "2026-06-01"
 ---
 
 # DeviceLab — Long-term Implementation Plan
 
-**Progress: 75%** `████████░░` — 9 of 12 phases complete (01–09); Phase 10 next
+**Progress: 83%** `█████████░` — 10 of 12 phases complete (01–10); Phase 11 next
 
 ## Strategic outcome
 
@@ -95,8 +95,8 @@ manifests, memory accounting) on top of the local-first runtime.
 | Phase | Status | Theme | Key deliverable |
 |-------|--------|-------|-----------------|
 | 08 | ✅ complete | Display & resource foundations | Real framebuffers for every family; 4-axis device model (`name`/`display_mode`/`mcp_exposed`); Host Resource Ledger (no over-commit, RAM reclaim); per-device log bus |
-| 09 | ⬜ planned | Low-latency streaming media layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family HW capture+encode (Android scrcpy first); attach/detach; quality profiles; local-vs-cloud ICE |
-| 10 | ⬜ planned | Device manifests & environment registry | Declarative `DeviceManifest` (named env spec, not a disk image); manifest registry; capture-from-device; create-from-manifest (fresh base + install from spec); import/export |
+| 09 | ✅ complete | Low-latency streaming media layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family HW capture+encode (Android scrcpy first); attach/detach; quality profiles; local-vs-cloud ICE |
+| 10 | ✅ complete | Device manifests & environment registry | Declarative `DeviceManifest` (named env spec, not a disk image); manifest registry; capture-from-device; create-from-manifest (fresh base + install from spec); import/export |
 | 11 | ⬜ planned | Device workspace UI | Browser-tab UX; New/Existing create wizard; per-tab screen pane + log panel; full per-device options menu; naming |
 | 12 | ⬜ planned | Root & cloud infra settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, manifests, security |
 

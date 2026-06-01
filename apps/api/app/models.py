@@ -130,6 +130,7 @@ class Device(SQLModel, table=True):
     provider_ids_json: str | None = Field(default=None, sa_column=Column(Text))
     cost_estimate: float | None = Field(default=None)
     tags_json: str | None = Field(default=None, sa_column=Column(Text))
+    source_manifest_id: uuid.UUID | None = Field(default=None)  # set when created-from-manifest
     screen_version: int = Field(default=0)
     created_at: datetime = Field(
         default_factory=get_datetime_utc,
@@ -205,6 +206,64 @@ class AuditEvent(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
+# Phase 10 — Device Manifests & Environment Registry
+# ---------------------------------------------------------------------------
+
+class DeviceManifest(SQLModel, table=True):
+    """Declarative environment spec: packages, config, install steps (not a disk image)."""
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
+    name: str | None = Field(default=None, max_length=120)
+    family: str = Field(max_length=64)
+    location: str = Field(max_length=32, default="local")
+    description: str | None = Field(default=None, max_length=1024)
+    spec_json: str = Field(sa_column=Column(Text))
+    source_device_id: uuid.UUID | None = Field(default=None)
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+    @property
+    def title(self) -> str:
+        return self.name or f"{self.family} · {str(self.id)[:8]}"
+
+
+class ManifestCreate(SQLModel):
+    workspace_id: uuid.UUID
+    name: str | None = None
+    family: str
+    location: str = "local"
+    description: str | None = None
+    spec_json: str = "{}"
+    source_device_id: uuid.UUID | None = None
+
+
+class ManifestUpdate(SQLModel):
+    name: str | None = None
+    description: str | None = None
+    spec_json: str | None = None
+
+
+class ManifestPublic(SQLModel):
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    name: str | None
+    family: str
+    location: str
+    description: str | None
+    spec_json: str
+    source_device_id: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+    title: str
+
+
+# ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
 
@@ -276,6 +335,7 @@ class DeviceCreate(SQLModel):
     location: str = "local"
     display_mode: str = "headless"
     mcp_exposed: bool = True
+    manifest_id: uuid.UUID | None = None  # Phase 10: create-from-manifest
 
 
 class DeviceLifecycleEvent(SQLModel):

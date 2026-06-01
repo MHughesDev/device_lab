@@ -65,6 +65,7 @@ class LinuxAdapter(DeviceAdapter):
                 streaming=True,
                 snapshot=True,
                 screen_recording=True,
+                manifest_capture=True,
                 dangerous_actions=["raw_shell"],
             ),
             required_providers=["aws_ec2", "ssm"],
@@ -187,3 +188,7 @@ class LinuxAdapter(DeviceAdapter):
                 message=f"EC2 instance {instance_id} created",
             )
         ]
+
+    async def capture_manifest(self, device: object) -> dict:
+        from app.adapters.linux.manifest import capture
+        return await capture(device)

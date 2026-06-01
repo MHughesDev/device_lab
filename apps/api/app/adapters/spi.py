@@ -16,6 +16,7 @@ class DeviceCapabilities:
     streaming: bool = False
     snapshot: bool = False
     screen_recording: bool = False
+    manifest_capture: bool = False   # Phase 10: capture_manifest() supported
     dangerous_actions: list[str] = field(default_factory=list)
 
 
@@ -99,3 +100,15 @@ class DeviceAdapter(ABC):
 
     async def cleanup_orphans(self, provider_ids: list[str], region: str) -> None:
         pass
+
+    async def capture_manifest(self, device: object) -> dict:
+        """Introspect the running device and return a spec_json payload dict.
+
+        Implementors should return a dict conforming to the manifest spec format
+        (see docs/design/manifest-spec.json). The caller creates the DeviceManifest
+        row via ManifestRegistry after receiving this dict.
+
+        Default: raises CapabilityUnsupportedError. Set capabilities.manifest_capture=True
+        in the adapter's AdapterManifest when overriding.
+        """
+        raise CapabilityUnsupportedError("capture_manifest", self.manifest().family)

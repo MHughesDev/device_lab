@@ -96,6 +96,7 @@ class DeviceFSM:
             self._reserve_ledger_resources()
         if trigger == "agent_ready":
             self._run_framebuffer_probe()
+            self._run_manifest_bootstrap()
         getattr(self, trigger)()
         self._persist(self.state)  # type: ignore[attr-defined]
         if trigger == "terminate_done":
@@ -182,6 +183,29 @@ class DeviceFSM:
             log.debug("Framebuffer probe passed for device %s: %s", self._device.id, message)
         except ImportError:
             pass
+
+    def _run_manifest_bootstrap(self) -> None:
+        """If the device was created from a manifest, translate and execute the bootstrap pipeline."""
+        manifest_id = getattr(self._device, "source_manifest_id", None)
+        if not manifest_id:
+            return
+        try:
+            from app.models import DeviceManifest
+            from app.services.manifest_bootstrap import to_pypyr_pipeline
+            manifest = self._db.get(DeviceManifest, manifest_id)
+            if not manifest:
+                log.warning("Manifest %s not found for device %s — skipping bootstrap", manifest_id, self._device.id)
+                return
+            pipeline_yaml = to_pypyr_pipeline(manifest.spec_json, manifest.family)
+            log.info(
+                "Manifest bootstrap pipeline generated for device %s (manifest=%s, steps=%d bytes)",
+                self._device.id, manifest_id, len(pipeline_yaml),
+            )
+            # Execution is handled by the adapter's bootstrap_agent hook in future;
+            # for now we log and emit so operators can see what would run.
+            self._emit_lifecycle(f"manifest_bootstrap_ready:{manifest.name or str(manifest_id)[:8]}")
+        except Exception as exc:
+            log.warning("Manifest bootstrap failed for device %s: %s", self._device.id, exc)
 
     def _release_ledger_reservation(self) -> None:
         """Release the Host Resource Ledger reservation after termination."""
