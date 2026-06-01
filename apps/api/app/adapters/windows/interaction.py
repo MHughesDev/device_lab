@@ -6,14 +6,17 @@ import time
 import boto3
 
 from app.adapters.spi import CapabilityUnsupportedError
+from app.adapters.windows.system_ops import SYSTEM_ACTIONS, handle_system_action
 
 SUPPORTED_ACTIONS = {
     "click", "double_click", "right_click", "mouse_move",
     "drag", "scroll", "cursor_position", "type", "key",
-}
+} | SYSTEM_ACTIONS
 
 
 async def act_windows(device: object, action: str, params: dict) -> dict:
+    if action in SYSTEM_ACTIONS:
+        return await handle_system_action(device, action, params)
     if action not in SUPPORTED_ACTIONS:
         raise CapabilityUnsupportedError(action, "windows")
 

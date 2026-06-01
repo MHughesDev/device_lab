@@ -22,6 +22,23 @@ def _capability_tools(caps: DeviceCapabilities, device_state: str) -> set[str]:
             tools.add("screenshot")
         if caps.observe.ax_tree:
             tools.add("get_accessibility_tree")
+        # OCR always available when screenshot is (control-plane pytesseract)
+        if caps.observe.screenshot:
+            tools |= {"ocr_screenshot", "find_on_screen"}
+        if caps.system.screen_size:
+            tools.add("get_screen_size")
+        if caps.system.windows:
+            tools.add("list_windows")
+        if caps.system.processes:
+            tools.add("list_processes")
+        if caps.system.filesystem:
+            tools.add("list_directory")
+        if caps.browser.tabs:
+            tools.add("list_tabs")
+        if caps.browser.console_logs:
+            tools.add("get_console_logs")
+        if caps.browser.network_requests:
+            tools.add("get_network_requests")
 
     if device_state in INTERACT_STATES:
         interact = caps.interact
@@ -47,6 +64,44 @@ def _capability_tools(caps: DeviceCapabilities, device_state: str) -> set[str]:
 
         if caps.screen_recording.supported:
             tools |= {"start_recording", "stop_recording", "get_recording_status", "get_recording_artifact"}
+
+        # Extended keyboard
+        if caps.system.key_hold:
+            tools |= {"key_down", "key_up"}
+        # Clipboard
+        if caps.system.clipboard:
+            tools |= {"get_clipboard", "set_clipboard"}
+        # App launch / navigation
+        if caps.system.launch_app:
+            tools.add("launch_app")
+        # Wait for condition
+        if caps.system.wait_for:
+            tools.add("wait_for")
+        # Window management
+        if caps.system.windows:
+            tools |= {"focus_window", "resize_window"}
+        # Shell + filesystem (test-role gated in permissions)
+        if caps.system.run_shell:
+            tools.add("run_shell")
+        if caps.system.filesystem:
+            tools |= {"read_file", "write_file"}
+        # Process management
+        if caps.system.processes:
+            tools.add("kill_process")
+        # Mobile gestures
+        if caps.mobile.long_press:
+            tools.add("long_press")
+        if caps.mobile.pinch:
+            tools.add("pinch")
+        if caps.mobile.press_button:
+            tools.add("press_button")
+        # Browser-specific
+        if caps.browser.navigate:
+            tools.add("navigate")
+        if caps.browser.tabs:
+            tools |= {"new_tab", "close_tab", "switch_tab"}
+        if caps.browser.dialogs:
+            tools.add("handle_dialog")
 
     if device_state in LIFECYCLE_STATES:
         if caps.lifecycle.stop:

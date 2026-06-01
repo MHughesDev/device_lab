@@ -3,16 +3,19 @@ from __future__ import annotations
 import base64
 
 from app.adapters.spi import CapabilityUnsupportedError
+from app.adapters.browser.system_ops import SYSTEM_ACTIONS, handle_system_action
 
 SUPPORTED_ACTIONS = {
     "click", "double_click", "right_click", "mouse_move",
     "drag", "scroll", "cursor_position", "type", "key",
-}
+} | SYSTEM_ACTIONS
 
 
 async def act_browser(device: object, action: str, params: dict) -> dict:
     if action not in SUPPORTED_ACTIONS:
         raise CapabilityUnsupportedError(action, "browser")
+    if action in SYSTEM_ACTIONS:
+        return await handle_system_action(device, action, params)
 
     from app.adapters.browser.adapter import _sessions
     device_id = str(device.id)  # type: ignore[attr-defined]

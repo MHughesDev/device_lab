@@ -20,6 +20,18 @@ ROLE_TOOLS: dict[Role, set[str]] = {
         "cost_status",
         "screenshot",
         "get_accessibility_tree",
+        # OCR / visual search — control-plane, read-only
+        "ocr_screenshot",
+        "find_on_screen",
+        # Read-only system info
+        "get_screen_size",
+        "list_windows",
+        "list_processes",
+        "list_directory",
+        # Browser read-only
+        "list_tabs",
+        "get_console_logs",
+        "get_network_requests",
     },
     Role.interact: {
         "click",
@@ -36,12 +48,40 @@ ROLE_TOOLS: dict[Role, set[str]] = {
         "stop_recording",
         "get_recording_status",
         "get_recording_artifact",
+        # Extended keyboard
+        "key_down",
+        "key_up",
+        # Clipboard
+        "get_clipboard",
+        "set_clipboard",
+        # App / navigation
+        "launch_app",
+        "navigate",
+        # Wait
+        "wait_for",
+        # Window management
+        "focus_window",
+        "resize_window",
+        # Mobile touch gestures
+        "long_press",
+        "pinch",
+        "press_button",
+        # Browser tab / dialog management
+        "new_tab",
+        "close_tab",
+        "switch_tab",
+        "handle_dialog",
     },
     Role.test: {
         "list_recipes",
         "get_recipe",
         "upload_file",
         "download_file",
+        # Shell and filesystem (potentially destructive)
+        "run_shell",
+        "read_file",
+        "write_file",
+        "kill_process",
     },
     Role.manage: {
         "create_recipe",

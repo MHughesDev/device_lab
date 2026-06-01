@@ -6,14 +6,19 @@ import time
 import boto3
 
 from app.adapters.spi import CapabilityUnsupportedError
+from app.adapters.ios_sim.system_ops import SYSTEM_ACTIONS, MOBILE_ACTIONS, handle_system_action, handle_mobile_action
 
 # right_click / mouse_move / cursor_position are desktop-only concepts; not exposed on sim
-SUPPORTED_ACTIONS = {"click", "double_click", "drag", "scroll", "type", "key"}
+SUPPORTED_ACTIONS = {"click", "double_click", "drag", "scroll", "type", "key"} | SYSTEM_ACTIONS | MOBILE_ACTIONS
 
 
 async def act_ios_sim(device: object, action: str, params: dict) -> dict:
     if action not in SUPPORTED_ACTIONS:
         raise CapabilityUnsupportedError(action, "ios_sim")
+    if action in SYSTEM_ACTIONS:
+        return await handle_system_action(device, action, params)
+    if action in MOBILE_ACTIONS:
+        return await handle_mobile_action(device, action, params)
 
     ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
     instance_id = ids.get("instance_id", "")
