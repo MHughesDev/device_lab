@@ -28,7 +28,7 @@ both on AWS (cloud) and locally on the developer's own machine.
 |---|---|---|---|
 | **linux** | Ubuntu / Debian / Fedora etc. | None | Free; run in VirtualBox, VMware, QEMU, or UTM |
 | **macos** | macOS | None — **but requires Apple hardware** | macOS VMs are only legal on Apple hardware; on a Mac you can run macOS VMs via UTM or VMware Fusion; on non-Apple hardware this is an EULA violation |
-| **windows** | Windows 10/11 | **Not required for testing** | Use Microsoft's official evaluation ISO (free, 90-day client / 180-day Server, renewable); or run unactivated — all functionality DeviceLab uses works without a license; a paid license is only needed for personalization features (wallpaper/themes), which DeviceLab does not expose |
+| **windows** | Windows 10/11 | **Not required** | Run unactivated — all functionality DeviceLab uses works without a license; only restriction is personalization (wallpaper/themes), which DeviceLab does not expose |
 | **android** | Android Emulator (AVD) | None | Ships free with Android Studio; AOSP-based, no license |
 | **ios_sim** | iOS Simulator | None — **but requires a Mac** | Simulator ships with Xcode (free from Mac App Store); cannot run on Windows or Linux |
 
@@ -48,5 +48,5 @@ both on AWS (cloud) and locally on the developer's own machine.
 |---|---|
 | macOS (any context) | **Must be on Apple hardware** — cloud or local. Non-negotiable per Apple EULA. |
 | iOS Simulator (any context) | **Requires macOS**, therefore requires Apple hardware. |
-| Windows (local) | **No license needed for DeviceLab use**. Unactivated Windows is fully functional for all testing; the only restrictions are personalization features (wallpaper/themes) which DeviceLab does not expose. Recommended: use Microsoft's official evaluation ISO (free, 90 days client / 180 days Server). |
+| Windows (local) | **No license needed**. Run unactivated — fully functional for all DeviceLab use cases. Only restriction is personalization (wallpaper/themes), which DeviceLab does not expose. |
 | Linux / Android | No licensing constraints in any context. |
