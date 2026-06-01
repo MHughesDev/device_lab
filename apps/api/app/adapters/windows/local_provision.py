@@ -34,9 +34,10 @@ async def provision(device: object, template: object) -> dict:
     device_id = str(getattr(device, "id", uuid.uuid4()))
     vm_name = f"devicelab-win-{device_id[:8]}"
     host_ssh_port = _allocate_port()
+    vnc_display = _allocate_vnc_port()
     image_path = _resolve_image(template)
 
-    qemu_cmd = _build_qemu_cmd(image_path, host_ssh_port, vm_name)
+    qemu_cmd = _build_qemu_cmd(image_path, host_ssh_port, vm_name, vnc_port=vnc_display)
     subprocess.Popen(qemu_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     await _wait_for_ssh("127.0.0.1", host_ssh_port, timeout_s=_SSH_WAIT_TIMEOUT_S)
@@ -46,6 +47,7 @@ async def provision(device: object, template: object) -> dict:
         "vm_ip": "127.0.0.1",
         "ssh_port": host_ssh_port,
         "ssh_username": "Administrator",
+        "vnc_display": vnc_display,
         "location": "local",
     }
 
@@ -76,7 +78,10 @@ def _resolve_image(template: object) -> str:
     )
 
 
-def _build_qemu_cmd(image_path: str, ssh_port: int, vm_name: str) -> list[str]:
+def _build_qemu_cmd(image_path: str, ssh_port: int, vm_name: str, vnc_port: int = 0) -> list[str]:
+    # virtio-vga gives the guest a real GPU scanout so GDI+ CopyFromScreen returns real pixels.
+    # VNC is bound loopback-only; the Phase 09 WebRTC bridge will consume it.
+    # -display none is intentionally absent — that destroyed the guest framebuffer (Phase 08 bug fix).
     accel = "kvm" if os.path.exists("/dev/kvm") else "tcg"
     return [
         "qemu-system-x86_64",
@@ -85,10 +90,21 @@ def _build_qemu_cmd(image_path: str, ssh_port: int, vm_name: str) -> list[str]:
         "-smp", "2",
         "-accel", accel,
         "-drive", f"file={image_path},if=virtio,format=qcow2",
+        "-device", "virtio-vga",
+        "-display", f"vnc=127.0.0.1:{vnc_port}",
         "-net", "nic,model=virtio",
         "-net", f"user,hostfwd=tcp:127.0.0.1:{ssh_port}-:22",
-        "-display", "none",
     ]
+
+
+def _allocate_vnc_port() -> int:
+    """Allocate a free VNC display number in the 5900+ range (loopback only)."""
+    for port in range(5900, 5999):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if s.connect_ex(("127.0.0.1", port)) != 0:
+                return port - 5900  # QEMU display number (0 = port 5900)
+    raise RuntimeError("No free VNC display numbers in range 0-98")
 
 
 def _allocate_port() -> int:
