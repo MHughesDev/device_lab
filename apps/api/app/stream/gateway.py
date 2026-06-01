@@ -1,8 +1,13 @@
+# gateway.py — Stream gateway: per-device WebRTC peer management (Phase 09, task 09-03)
 """
 Stream gateway — manages per-device WebRTC peer connections.
+
+Phase 09: negotiate() now wires a real MediaSource + InputSink via StreamPeer(device).
+The blank track fallback remains via NullMediaSource for unregistered family/location pairs.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -12,6 +17,8 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.models import Device, StreamSession
 from app.stream.peer import StreamPeer
+
+log = logging.getLogger(__name__)
 
 _TOKEN_EXPIRE_MINUTES = 60
 _peers: dict[str, StreamPeer] = {}
@@ -32,30 +39,21 @@ def _verify_token(token: str) -> dict:
     return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
 
 
-async def negotiate(db: Session, device_id: uuid.UUID, sdp_offer: str, client_id: str) -> tuple[StreamSession, str]:
-    """Accept an SDP offer, create a peer, return session with answer."""
+async def negotiate(
+    db: Session, device_id: uuid.UUID, sdp_offer: str, client_id: str
+) -> tuple[StreamSession, str]:
+    """Accept an SDP offer, create a peer with real MediaSource+InputSink, return answer."""
     device = db.get(Device, device_id)
     if not device or device.state != "ready":
         raise ValueError("Device not found or not ready")
 
-    peer = StreamPeer()
-    # For offer-based flow: set remote offer first, create answer
-    from aiortc import RTCSessionDescription  # type: ignore
-    remote = RTCSessionDescription(sdp=sdp_offer, type="offer")
-    await peer.pc.setRemoteDescription(remote)
-
-    # Add video track and data channel before answer
-    from app.stream.peer import _BlankVideoTrack
-    peer.pc.addTrack(_BlankVideoTrack())
-    peer._input_channel = peer.pc.createDataChannel("input")
-
-    answer = await peer.pc.createAnswer()
-    await peer.pc.setLocalDescription(answer)
+    peer = StreamPeer(device=device)
+    answer_sdp = await peer._setup_offer_answer(sdp_offer)
 
     now = datetime.now(UTC)
     stream_session = StreamSession(
         device_id=device_id,
-        session_token="",   # filled after id is set
+        session_token="",
         status="active",
         client_id=client_id,
         created_at=now,
@@ -71,7 +69,9 @@ async def negotiate(db: Session, device_id: uuid.UUID, sdp_offer: str, client_id
     db.commit()
 
     _peers[str(stream_session.id)] = peer
-    return stream_session, peer.pc.localDescription.sdp  # type: ignore
+
+    _emit_stream_event(device_id, "negotiate", {"client_id": client_id})
+    return stream_session, answer_sdp
 
 
 async def reconnect(db: Session, device_id: uuid.UUID, session_token: str) -> StreamSession:
@@ -93,15 +93,33 @@ async def reconnect(db: Session, device_id: uuid.UUID, session_token: str) -> St
     if not device or device.state != "ready":
         raise ValueError("Device not ready")
 
+    _emit_stream_event(device_id, "reconnect", {"session_id": str(session_id)})
     return session
 
 
 async def close_session(db: Session, session_id: uuid.UUID) -> None:
     peer = _peers.pop(str(session_id), None)
     if peer:
+        device_id = getattr(peer._device, "id", None)
         await peer.close()
+        if device_id:
+            _emit_stream_event(device_id, "teardown", {"session_id": str(session_id)})
     session = db.get(StreamSession, session_id)
     if session:
         session.status = "closed"
         db.add(session)
         db.commit()
+
+
+def _emit_stream_event(device_id, event: str, fields: dict | None = None) -> None:
+    try:
+        from app.services.device_log_bus import get_log_bus
+        get_log_bus().emit(
+            str(device_id),
+            level="info",
+            source="stream",
+            message=f"Stream session event: {event}",
+            fields={"event": event, **(fields or {})},
+        )
+    except Exception:
+        pass
