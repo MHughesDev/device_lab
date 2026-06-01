@@ -96,7 +96,7 @@ memory accounting) on top of the local-first runtime.
 |-------|--------|-------|-----------------|
 | 08 | ⬜ planned | Display & resource foundations | Real framebuffers for every family; 4-axis device model (`name`/`display_mode`/`mcp_exposed`); Host Resource Ledger (no over-commit, RAM reclaim); per-device log bus |
 | 09 | ⬜ planned | Low-latency streaming media layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family HW capture+encode (Android scrcpy first); attach/detach; quality profiles; local-vs-cloud ICE |
-| 10 | ⬜ planned | Snapshots & persistence | Per-family snapshot create/restore; sleep/wake with RAM reclaim; snapshot library; create-from-snapshot; naming |
+| 10 | ⬜ planned | Device manifests & environment registry | Declarative `DeviceManifest` (named env spec, not a disk image); manifest registry; capture-from-device; create-from-manifest (fresh base + install from spec); import/export |
 | 11 | ⬜ planned | Device workspace UI | Browser-tab UX; New/Existing create wizard; per-tab screen pane + log panel; full per-device options menu; naming |
 | 12 | ⬜ planned | Root & cloud infra settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, snapshots, security |
 

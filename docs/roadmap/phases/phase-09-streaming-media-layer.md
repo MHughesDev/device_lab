@@ -69,13 +69,14 @@ Batch E (Apple — vz + ScreenCaptureKit; depends on A; Apple-gated)
   09-12  macOS MediaSource (ScreenCaptureKit→VideoToolbox) + InputSink
   09-13  iOS-sim MediaSource (ScreenCaptureKit window capture) + InputSink
 
-Batch F (runtime control + quality; depends on A–E as available)
+Batch F (runtime control + quality + audio; depends on A–E as available)
   09-14  Attach/Detach interactive session (display_mode toggle, no reprovision)
   09-15  Display & quality profiles (resolution/fps, sharp-text vs smooth, freeze-drop)
-  09-16  Stream-session log-bus events + latency acceptance harness
+  09-16  Audio track: device audio → Opus → WebRTC audio stream (per-family)
+  09-17  Stream-session log-bus events + latency acceptance harness
 
 Batch G (cloud variants — back-loaded; depends on A–C)
-  09-17  Cloud capture-locus note + in-guest agent stubs + coturn config (ADR-gated)
+  09-18  Cloud capture-locus note + in-guest agent stubs + coturn config (ADR-gated)
 ```
 
 ---
@@ -327,7 +328,33 @@ ABR via `set_bitrate`. Per-device override stored on the device/session.
 
 ---
 
-## Task 09-16: Stream log-bus events + latency acceptance harness
+## Task 09-16: Audio track — device audio → Opus → browser
+
+**Files:** `apps/api/app/stream/audio_source.py` (new); edit `stream/peer.py` to add an audio
+track alongside the video track; edit per-family sources to wire audio.
+
+Add a second WebRTC track (audio, Opus) to every `StreamPeer`. Per-family capture:
+
+| Family | Audio capture |
+|--------|--------------|
+| Linux (Docker) | PulseAudio/ALSA virtual sink → GStreamer `pulsesrc`/`alsasrc` → Opus |
+| Android | scrcpy-server already streams audio in its protocol (enable the audio channel) |
+| Windows (QEMU) | QEMU `-audiodev pa,id=snd0 -device ich9-intel-hda` → VirtIO audio → host PulseAudio/PipeWire → GStreamer → Opus |
+| macOS (`vz`) | `vz` VZVirtioSoundDeviceConfiguration → host CoreAudio → AVFoundation/AVAudioEngine → Opus |
+| iOS-sim | ScreenCaptureKit audio stream → AVAudioEngine → Opus |
+
+Audio is a required part of `display_mode=interactive` — attaching a session always starts both
+tracks. `AudioSource` follows the same `start/stop` lifecycle as `MediaSource`; the SPI factory
+(09-01) resolves `audio_source_for(device)` by `(family, location)`.
+
+**Tests:** `test_peer_adds_audio_track`, `test_audio_source_factory_dispatches_by_family`,
+`test_attach_starts_audio_and_video_tracks`.
+
+**Do not:** offer audio as an optional toggle — it is always on in interactive mode.
+
+---
+
+## Task 09-17: Stream log-bus events + latency acceptance harness
 
 **Files:** edit `stream/peer.py`/`gateway.py` to emit; `tests/stream/test_latency_budget.py` (new).
 
@@ -343,7 +370,7 @@ where HW encode available; soft-skip otherwise).
 
 ---
 
-## Task 09-17: Cloud variants (back-loaded, ADR-gated)
+## Task 09-18: Cloud variants (back-loaded, ADR-gated)
 
 **Files:** `docs/design/streaming-cloud-vs-local.md` (new); in-guest agent stubs under
 `adapters/*/stream_cloud.py`; `stream/ice.py` coturn branch; `adr-00xx-coturn-cloud-turn.md`.
@@ -361,10 +388,11 @@ full cloud implementation is a follow-on once local is proven.
 
 ## Exit criteria
 
-- A **local Android** device streams a real, scrcpy-sourced H.264 video into the browser via the
-  existing WebRTC signaling, with input injected over the data channel — end to end.
+- A **local Android** device streams a real, scrcpy-sourced H.264 video **and audio** into the
+  browser via the existing WebRTC signaling, with input injected over the data channel — end to end.
 - Linux (Xvfb+GStreamer), Windows (VNC-bridge+QMP), and macOS/iOS-sim (vz+SCK+VideoToolbox) each have
-  a working `MediaSource`/`InputSink`.
+  a working `MediaSource`/`AudioSource`/`InputSink`.
+- Every interactive session always has both a video track and an audio track — they are not separable.
 - **Attach/Detach** flips a device between headless and interactive with no reprovision; MCP exposure
   is independent.
 - aiortc encoded-passthrough works (or the ADR records the documented fallback).

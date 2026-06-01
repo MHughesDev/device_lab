@@ -40,21 +40,24 @@ We split them:
 | Axis | Values | Set when | Toggleable at runtime? | Maps to user's words |
 |------|--------|----------|------------------------|----------------------|
 | **Display mode** | `headless` \| `interactive` | create | **Yes** | "headless" / "stateful machine" / "interactive display" |
-| **Persistence** | `ephemeral` \| `snapshot_backed` | create | No (snapshot is an action) | "new" / "existing (snapshot) device" |
+| **Manifest-backed** | `yes` \| `no` | create | No (manifest captured via action) | "new" / "existing device" |
 | **MCP exposure** | `on` \| `off` | create | **Yes** | "MCP exposed yes or no" |
 | **Location** | `local` \| `cloud` | create | No | "local or cloud" |
 
 - **Display mode = headless** → a virtual framebuffer exists on the device, but **no WebRTC
   stream is started**. MCP screenshot / record / AX-tree all work (they read the framebuffer
   directly — see D-2). The tab shows logs only; the screen pane reads "Headless — click *Attach
-  display* to view."
-- **Display mode = interactive** → WebRTC stream + input control are live; the human drives it.
+  interactive session* to view and control."
+- **Display mode = interactive** → WebRTC stream + audio track + full input control are live;
+  the human drives it. When interactive, the device **always** has screen, audio, mouse,
+  keyboard, clipboard, and file push/pull — there is no interaction-less interactive mode.
 - The runtime menu item the user called *"turn into a stateful machine"* is renamed
   **"Attach interactive session"** (and its inverse, **"Detach"**). It flips display mode
   `headless → interactive` with no reprovision.
-- **Persistence** is independent: an `interactive` device can be `ephemeral`, and a `headless`
-  device can be `snapshot_backed`. "Existing / snapshot devices" from the brief are
-  `persistence = snapshot_backed`, created via **Create-from-snapshot** (see Phase 10).
+- **"Existing / snapshot devices"** are manifest-backed: they are created via **Create-from-manifest**
+  (Phase 10). There is **no sleep/wake state** — a device is either running or terminated.
+  "Sleepy machine" (user's term) simply means a running device that isn't under load — it remains
+  fully allocated and is not a special state.
 
 ### D-2. The MCP screen and the human screen are independent consumers
 
@@ -69,16 +72,14 @@ mode.
 ### D-3. Memory must be a first-class, consolidated ledger — never over-committed
 
 The brief: *"clear memory allocation for each device … nothing overlapping … memory always
-[reserved] and consolidated for sleepy/snapshot devices as well as running ones."* Phase 07 already
-ships `LocalScheduler` admission control (`services/local/scheduler.py`). We **extend** it into a
-durable **Host Resource Ledger** (Phase 08) rather than building a parallel system:
+[reserved] and consolidated."* Phase 07 already ships `LocalScheduler` admission control
+(`services/local/scheduler.py`). We **extend** it into a durable **Host Resource Ledger** (Phase 08):
 
 - Every device template declares a RAM/vCPU/disk reservation.
-- The ledger tracks **committed vs total** across *all* local devices — running, sleeping, and
-  snapshot-restore-pending — and refuses any create/wake that would over-commit
-  (→ `preflight_blocked: insufficient_host_resources`).
-- **Sleep/snapshot reclaims RAM**: a suspended device releases its RAM reservation back to the
-  ledger (its disk reservation persists). Wake re-acquires from the ledger or is refused.
+- The ledger tracks **committed vs total** across all running local devices and refuses any
+  create that would over-commit (→ `preflight_blocked: insufficient_host_resources`).
+- A device holds its full reservation from `provisioning` until `terminated` — there is no
+  intermediate "sleeping" state that reclaims RAM.
 - Reservations are persisted so a control-plane restart reconciles the ledger against reality
   (extends Phase 07's startup reconciliation).
 
@@ -120,15 +121,20 @@ and the label in the snapshot/existing-device picker. Absent a name, fall back t
 
 ```
 Create a device
-   ├── New ─────────────► choose: OS · location · display-mode · MCP-exposure  (+ optional name)
-   │                         └─► ephemeral by default; "Save as snapshot" later → snapshot_backed
-   └── Existing ────────► pick a named Snapshot ──► Create-from-snapshot (inherits OS/apps/state)
+   ├── New ──────────────► choose: OS · location · display-mode · MCP-exposure  (+ optional name)
+   │                          └─► provisions a fresh base image
+   └── Existing ─────────► pick a named DeviceManifest ──► Create-from-manifest
+                               (provisions fresh base + installs everything from the spec)
 
 Runtime (per tab)
    display_mode:  headless  ⇄  interactive     ("Attach / Detach interactive session")
+                                               interactive = screen + audio + ALL input (no partial)
    mcp_exposed:   on        ⇄  off
-   persistence:   ephemeral  →  snapshot_backed ("Save as snapshot" — one-way capture action)
-   power:         ready ⇄ sleeping (RAM reclaimed) ; ready → terminated
+   power:         running (resources committed)  →  terminated (resources released)
+                  no intermediate sleep/suspend state
+
+Capture (from running device)
+   "Capture environment manifest" ──► DeviceManifest saved to registry (named, reusable)
 ```
 
 ---
@@ -139,7 +145,7 @@ Runtime (per tab)
 |-------|-------|-----------------|
 | **08** | Display & Resource Foundations | Real framebuffers for every family; the 4-axis device model (`name`, `display_mode`, `mcp_exposed`); Host Resource Ledger (no over-commit, RAM reclaim); per-device structured log bus |
 | **09** | Low-Latency Streaming Media Layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family hardware capture+encode (Android scrcpy first); input injection; attach/detach; quality profiles; local-vs-cloud ICE |
-| **10** | Snapshots & Persistence (local-first) | Per-family snapshot create/restore; sleep/wake with RAM reclaim; snapshot library; Create-from-snapshot; naming |
+| **10** | Device Manifests & Environment Registry | Declarative `DeviceManifest` (named environment spec, not a disk image); manifest registry; capture-from-device; create-from-manifest; import/export |
 | **11** | Device Workspace UI (browser-tab UX) | Tabbed workspace shell; New/Existing create wizard; per-tab screen pane + log panel; full per-device options menu; naming UI; snapshot picker; tab session restore |
 | **12** | Root & Cloud Infra Settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, snapshots, security — wired and validated |
 

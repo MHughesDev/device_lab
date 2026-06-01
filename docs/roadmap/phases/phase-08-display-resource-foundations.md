@@ -187,31 +187,32 @@ class ResourceLedger:
     def can_admit(self, claim: ResourceClaim) -> bool: ...
     def reserve(self, device_id, claim) -> None: ...
     def release(self, device_id) -> None: ...
-    def reclaim_ram(self, device_id) -> None: ...    # sleep: free RAM, keep disk
 ```
-`HostReservation(device_id, ram_mb, vcpu, disk_mb, state)` persists so the ledger survives restarts.
-Reserve a configurable **headroom** (default 20% RAM) for the host OS — never commit it.
+`HostReservation(device_id, ram_mb, vcpu, disk_mb)` persists so the ledger survives restarts. A
+device holds its full resource reservation from `provisioning` until `terminated` — there is no
+intermediate suspended state. Reserve a configurable **headroom** (default 20% RAM) for the host OS
+— never commit it.
 
-**Tests:** `test_can_admit_rejects_over_ram`, `test_reclaim_ram_frees_only_ram`,
+**Tests:** `test_can_admit_rejects_over_ram`, `test_release_on_terminate_frees_all_resources`,
 `test_headroom_is_never_committed`.
 
-**Do not:** implement queueing (reject-fast, mirrors Phase 07 07-04). No cloud accounting — local only.
+**Do not:** implement queueing (reject-fast, mirrors Phase 07 07-04). No cloud accounting — local
+only. No `reclaim_ram`/sleep path — there is no suspended state.
 
 ---
 
 ## Task 08-08: Reservation lifecycle wiring
 
-**Files:** edit `services/device_fsm.py`, device-create, terminate, and (stub) sleep/wake hooks.
+**Files:** edit `services/device_fsm.py`, device-create, terminate.
 
 `provisioning` entry → `ledger.reserve(template_claim)`; reject → `preflight_blocked:
-insufficient_host_resources`. `terminated` → `ledger.release`. Define the **sleep/wake seam**
-(`reclaim_ram` on sleep, `reserve`-RAM on wake) as no-op-safe hooks Phase 10 fills in. Emits
-ledger log-bus events.
+insufficient_host_resources`. `terminated` → `ledger.release`. Two states only: reserved
+(provisioning → ready) and released (terminated). Emits ledger log-bus events.
 
-**Tests:** `test_provision_reserves_then_terminate_releases`, `test_sleep_hook_reclaims_ram`,
+**Tests:** `test_provision_reserves_then_terminate_releases`,
 `test_overcommit_blocks_at_preflight`.
 
-**Do not:** implement actual VM suspend (Phase 10) — just the ledger side of the hook.
+**Do not:** add any sleep/wake/suspend hooks — there is no intermediate power state.
 
 ---
 
@@ -306,7 +307,7 @@ per-device log feed and how to tail it. Add an `Xvfb` row to the Linux prereqs.
 - Devices carry `name`, `display_mode`, `mcp_exposed`; defaults are headless + MCP-on; existing rows
   migrate cleanly.
 - Creating more devices than host RAM allows is refused at `preflight_blocked:
-  insufficient_host_resources`; sleeping a device frees its RAM in the ledger; a control-plane
-  restart reconciles the ledger without leaking reservations.
+  insufficient_host_resources`; a control-plane restart reconciles the ledger without leaking
+  reservations.
 - `GET /devices/{id}/logs/stream` replays + streams structured, secret-redacted events on loopback.
 - No streaming and no UI screen pane shipped (correctly deferred to Phases 09/11).
