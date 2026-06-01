@@ -93,6 +93,10 @@ class LinuxAdapter(DeviceAdapter):
         return _AMI_MAP.get(self._region, _AMI_MAP["us-east-1"])
 
     async def provision(self, device: Device, template: DeviceTemplate) -> ProviderIds:
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.linux.local_provision import provision as local_provision
+            return await local_provision(device, template)  # type: ignore[return-value]
+
         workspace_id = str(device.workspace_id)
         device_id = str(device.id)
         template_name = template.name
@@ -164,6 +168,11 @@ class LinuxAdapter(DeviceAdapter):
         self._client.send_ssm_command(instance_id, commands)
 
     async def terminate(self, device: Device) -> None:
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.linux.local_provision import terminate as local_terminate
+            await local_terminate(device)
+            return
+
         if not device.provider_ids_json:
             return
         ids = json.loads(device.provider_ids_json)
