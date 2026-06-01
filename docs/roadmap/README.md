@@ -22,6 +22,7 @@ This folder turns the initialized DeviceLab product contract into an implementat
 | 24.5 | [Phase 04 - Recipes, identity, and streaming](phases/phase-04-recipes-identity-streaming.md) | Add repeatable recipes, safe secret references, and split media/input sessions. |
 | 24.6 | [Phase 05 - Guardrails, artifacts, and replay](phases/phase-05-guardrails-artifacts-replay.md) | Enforce cost policy, snapshots, test artifacts, and evidence replay. |
 | 24.7 | [Phase 06 - Plugins and family expansion](phases/phase-06-plugins-family-expansion.md) | Stabilize the adapter SPI and expand across all target device families. |
+| 24.8 | [Phase 07 - Local hosting](phases/phase-07-local-hosting.md) | Host device families directly on the local machine via a transport abstraction, local scheduler, and placement layer (ADR-0003). |
 
 ## How to use these files
 

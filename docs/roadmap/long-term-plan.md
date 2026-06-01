@@ -9,7 +9,7 @@ updated: "2026-05-31"
 
 # DeviceLab — Long-term Implementation Plan
 
-**Progress: 100%** — all six phases complete
+**Progress:** six phases complete; Phase 07 (local hosting) planned
 
 ## Strategic outcome
 
@@ -83,7 +83,8 @@ Every major subsystem is backed by a specific open-source repo. This table is th
 | 03 | ✅ complete | MCP observation + interaction | Agents discover capabilities, observe AX/OCR structure, execute batched semantic actions |
 | 04 | ✅ complete | Recipes, identity, streaming | Recipes execute repeatably; secrets never leave keychain; split WebRTC stream + input channel |
 | 05 | ✅ complete | Guardrails, artifacts, replay | Cost caps enforced; snapshots + test artifacts exist; evidence replay explains every action |
-| 06 | ✅ complete | Adapter SPI + family expansion | Versioned plugin contract; Android, Windows, macOS, iOS Sim, real iOS added through adapters |
+| 06 | ✅ complete | Adapter SPI + family expansion | Versioned plugin contract; Android, Windows, macOS, iOS Sim added through adapters |
+| 07 | ⬜ planned | Local hosting | Channel transport abstraction + local scheduler + placement layer; host families on the local machine with no AWS account (ADR-0003) |
 
 ---
 

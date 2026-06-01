@@ -32,3 +32,5 @@ This file records unresolved product decisions from `idea.md` and classifies eac
 | OQ-008 | OTel exporter default: bundled local stack or user-provided endpoint? | implementation-blocking | User-provided OTLP endpoint default | Open |
 | OQ-009 | mTLS cert lifecycle ownership for gateway<->runtime channel? | implementation-blocking | DeviceLab-managed short-lived certs unless user PKI is configured | Open |
 | OQ-010 | AWS multi-account support timing (v1 or post-v1)? | implementation-blocking | Single-account v1 with post-v1 AssumeRole chain expansion | Open |
+| OQ-011 | CPU architecture (ARM vs x86) as a first-class template dimension for local hosting? | architecture-blocking | Templates gain an `arch` dimension; Apple Silicon hosts cannot run x86 Windows VMs at usable speed, and Android/Linux images must be arch-matched (see ADR-0003) | Open |
+| OQ-012 | Local per-family proxy + mitmproxy CA-cert injection mechanism? | implementation-blocking | Deferred to Phase 07 Batch H; injection differs per family (container env vs VM provisioning vs Android system store) and is undesigned (see ADR-0003) | Open |
