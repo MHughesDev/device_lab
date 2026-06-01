@@ -40,6 +40,10 @@ class AndroidAdapter(DeviceAdapter):
         2. SSM bootstrap: install AOSP emulator, boot AVD.
         3. Poll adb devices until emulator appears (timeout 5 min).
         """
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.android.local_provision import provision as _local_provision
+            return await _local_provision(device, template)
+
         import boto3
         from app.adapters.aws.tags import device_tags
 
@@ -86,6 +90,10 @@ class AndroidAdapter(DeviceAdapter):
 
     async def terminate(self, device: object) -> None:
         """Stop emulator via adb emu kill, then terminate EC2."""
+        if getattr(device, "location", "cloud") == "local":
+            from app.adapters.android.local_provision import terminate as _local_terminate
+            return await _local_terminate(device)
+
         if not getattr(device, "provider_ids_json", None):
             return
         ids = json.loads(device.provider_ids_json)  # type: ignore[attr-defined]

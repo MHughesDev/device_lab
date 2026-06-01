@@ -71,16 +71,25 @@ class ChannelFactory:
                 container_id = ids.get("container_id", "")
                 return DockerExecChannel(container_id)
             if family == "android":
-                raise NotImplementedError(
-                    "ADBChannel not yet implemented (task 07-11)"
-                )
+                from app.transport.adb import ADBChannel
+                adb_serial = ids.get("adb_serial", "emulator-5554")
+                return ADBChannel(adb_serial)
             if family == "windows":
-                raise NotImplementedError(
-                    "SSHChannel not yet implemented (task 07-12)"
-                )
-            if family in ("macos", "ios_sim"):
-                raise NotImplementedError(
-                    f"Local {family} channel not yet implemented (task 07-13)"
-                )
+                from app.transport.ssh import SSHChannel
+                host = ids.get("vm_ip", "127.0.0.1")
+                port = int(ids.get("ssh_port", 22))
+                username = ids.get("ssh_username", "Administrator")
+                key_path = ids.get("ssh_key_path")
+                return SSHChannel(host, port=port, username=username, key_path=key_path)
+            if family == "macos":
+                from app.transport.ssh import SSHChannel
+                host = ids.get("vm_ip", "127.0.0.1")
+                port = int(ids.get("ssh_port", 22))
+                username = ids.get("ssh_username", "user")
+                key_path = ids.get("ssh_key_path")
+                return SSHChannel(host, port=port, username=username, key_path=key_path)
+            if family == "ios_sim":
+                from app.transport.local_shell import LocalShellChannel
+                return LocalShellChannel()
 
         raise ValueError(f"No channel implementation for family={family!r} location={location!r}")
