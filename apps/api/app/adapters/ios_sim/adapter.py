@@ -23,7 +23,8 @@ class IOSSimulatorAdapter(DeviceAdapter):
             display_name="iOS Simulator (macOS EC2 + xcrun simctl)",
             capabilities=DeviceCapabilities(
                 observe=["screenshot"],
-                interact=["tap", "swipe", "type", "key"],
+                # drag = touch swipe; right_click/mouse_move/cursor_position not applicable on simulator
+                interact=["click", "double_click", "drag", "scroll", "type", "key"],
                 network=[],
                 streaming=True,
                 snapshot=True,
@@ -117,22 +118,8 @@ class IOSSimulatorAdapter(DeviceAdapter):
         )
 
     async def act(self, device: object, action: str, params: dict) -> object:
-        if action not in self.manifest().capabilities.interact:
-            raise CapabilityUnsupportedError(action, "ios_sim")
-        ids = json.loads(getattr(device, "provider_ids_json", "{}") or "{}")
-        instance_id = ids.get("instance_id", "")
-        sim_udid = ids.get("sim_udid", "")
-        region = ids.get("region", "us-east-1")
-
-        cmd = _build_simctl_command(action, sim_udid, params)
-        import boto3
-        ssm = boto3.client("ssm", region_name=region)
-        ssm.send_command(
-            InstanceIds=[instance_id],
-            DocumentName="AWS-RunShellScript",
-            Parameters={"commands": [cmd]},
-        )
-        return {"success": True, "action": action}
+        from app.adapters.ios_sim.interaction import act_ios_sim
+        return await act_ios_sim(device, action, params)
 
     async def snapshot(self, device: object) -> object:
         """Clone simulator via xcrun simctl clone."""
@@ -153,16 +140,3 @@ class IOSSimulatorAdapter(DeviceAdapter):
         return {"snapshot_name": snap_name}
 
 
-def _build_simctl_command(action: str, sim_udid: str, params: dict) -> str:
-    if action == "tap":
-        x, y = params.get("x", 0), params.get("y", 0)
-        return f"xcrun simctl io {sim_udid} sendkey tap {x} {y}"
-    elif action == "swipe":
-        return (f"xcrun simctl io {sim_udid} sendkey swipe "
-                f"{params.get('start_x',0)} {params.get('start_y',0)} "
-                f"{params.get('end_x',0)} {params.get('end_y',0)}")
-    elif action == "type":
-        return f"xcrun simctl io {sim_udid} sendkey type {params.get('text','')}"
-    elif action == "key":
-        return f"xcrun simctl io {sim_udid} sendkey {params.get('keycode','')}"
-    return "echo noop"

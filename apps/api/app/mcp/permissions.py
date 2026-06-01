@@ -11,7 +11,6 @@ class Role(IntEnum):
     dangerous = 6
 
 
-# Tools allowed at each role level (cumulative)
 ROLE_TOOLS: dict[Role, set[str]] = {
     Role.observe: {
         "workspace_status",
@@ -19,18 +18,24 @@ ROLE_TOOLS: dict[Role, set[str]] = {
         "get_device",
         "list_templates",
         "cost_status",
-        "observe",
+        "screenshot",
+        "get_accessibility_tree",
     },
     Role.interact: {
         "click",
-        "type_text",
-        "fill_form",
-        "select_option",
+        "double_click",
+        "right_click",
+        "mouse_move",
+        "drag",
         "scroll",
-        "wait_for",
-        "read_content",
-        "run_steps",
+        "cursor_position",
+        "type",
+        "key",
         "get_evidence",
+        "start_recording",
+        "stop_recording",
+        "get_recording_status",
+        "get_recording_artifact",
     },
     Role.test: {
         "list_recipes",

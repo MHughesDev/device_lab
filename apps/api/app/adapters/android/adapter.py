@@ -22,8 +22,9 @@ class AndroidAdapter(DeviceAdapter):
             family="android",
             display_name="Android Emulator (EC2 nested virt)",
             capabilities=DeviceCapabilities(
-                observe=["ax_tree", "screenshot"],
-                interact=["click", "swipe", "type", "key", "scroll"],
+                observe=["screenshot", "ax_tree"],
+                # drag = touch swipe; right_click/mouse_move/cursor_position not applicable on touchscreen
+                interact=["click", "double_click", "drag", "scroll", "type", "key"],
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=False,

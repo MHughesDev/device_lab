@@ -26,9 +26,9 @@ class BrowserAdapter(DeviceAdapter):
             family="browser",
             display_name="Browser (Playwright)",
             capabilities=DeviceCapabilities(
-                observe=["ax_tree", "screenshot"],
-                interact=["navigate", "click", "type", "fill_form",
-                          "select_option", "scroll", "wait_for", "read_content"],
+                observe=["screenshot", "ax_tree"],
+                interact=["click", "double_click", "right_click", "mouse_move",
+                          "drag", "scroll", "cursor_position", "type", "key"],
                 network=[],
                 streaming=False,
                 snapshot=False,
@@ -45,11 +45,8 @@ class BrowserAdapter(DeviceAdapter):
         return await observe_device(device, tier)
 
     async def act(self, device: object, action: str, params: dict) -> object:
-        from app.adapters.spi import CapabilityUnsupportedError
-        if action not in self.manifest().capabilities.interact:
-            raise CapabilityUnsupportedError(action, "browser")
-        from app.services.interaction import act_on_device
-        return await act_on_device(device, action, params)
+        from app.adapters.browser.interaction import act_browser
+        return await act_browser(device, action, params)
     async def provision(self, device: Device, template: DeviceTemplate) -> str:
         session = await BrowserSession.create(device_id=str(device.id))
         _sessions[str(device.id)] = session

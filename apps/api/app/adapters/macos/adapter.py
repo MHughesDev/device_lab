@@ -24,8 +24,9 @@ class MacOSAdapter(DeviceAdapter):
             family="macos",
             display_name="macOS (EC2 mac2.metal Dedicated Host)",
             capabilities=DeviceCapabilities(
-                observe=["ax_tree", "screenshot"],
-                interact=["click", "type", "key", "scroll"],
+                observe=["screenshot", "ax_tree"],
+                interact=["click", "double_click", "right_click", "mouse_move",
+                          "drag", "scroll", "cursor_position", "type", "key"],
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=False,
@@ -116,8 +117,5 @@ class MacOSAdapter(DeviceAdapter):
         return await observe_macos(device, tier)
 
     async def act(self, device: object, action: str, params: dict) -> object:
-        from app.adapters.spi import CapabilityUnsupportedError
-        if action not in self.manifest().capabilities.interact:
-            raise CapabilityUnsupportedError(action, "macos")
-        # macOS action dispatch via SSM AppleScript/cliclick
-        return {"success": True, "action": action}
+        from app.adapters.macos.interaction import act_macos
+        return await act_macos(device, action, params)

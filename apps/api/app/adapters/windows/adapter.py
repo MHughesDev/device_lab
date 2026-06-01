@@ -20,8 +20,9 @@ class WindowsAdapter(DeviceAdapter):
             family="windows",
             display_name="Windows Server (EC2 + SSM)",
             capabilities=DeviceCapabilities(
-                observe=["ax_tree", "screenshot"],
-                interact=["click", "type", "key", "scroll"],
+                observe=["screenshot", "ax_tree"],
+                interact=["click", "double_click", "right_click", "mouse_move",
+                          "drag", "scroll", "cursor_position", "type", "key"],
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=True,

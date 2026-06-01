@@ -58,8 +58,9 @@ class LinuxAdapter(DeviceAdapter):
             family="linux",
             display_name="Linux (EC2 + SSM)",
             capabilities=DeviceCapabilities(
-                observe=["ax_tree", "screenshot"],
-                interact=["click", "type", "key", "scroll", "raw_shell"],
+                observe=["screenshot", "ax_tree"],
+                interact=["click", "double_click", "right_click", "mouse_move",
+                          "drag", "scroll", "cursor_position", "type", "key"],
                 network=["proxy", "capture"],
                 streaming=True,
                 snapshot=True,
@@ -77,11 +78,8 @@ class LinuxAdapter(DeviceAdapter):
         return await observe_device(device, tier)
 
     async def act(self, device: object, action: str, params: dict) -> object:
-        from app.adapters.spi import CapabilityUnsupportedError
-        if action not in self.manifest().capabilities.interact:
-            raise CapabilityUnsupportedError(action, "linux")
-        from app.services.interaction import act_on_device
-        return await act_on_device(device, action, params)
+        from app.adapters.linux.interaction import act_linux
+        return await act_linux(device, action, params)
 
     async def snapshot(self, device: object) -> object:
         from app.services.snapshots import create_snapshot

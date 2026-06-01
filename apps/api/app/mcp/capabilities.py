@@ -18,10 +18,13 @@ class ObserveCapabilities(BaseModel):
 
 class InteractCapabilities(BaseModel):
     click: bool = False
-    type_text: bool = False
-    fill_form: bool = False
-    select: bool = False
+    double_click: bool = False
+    right_click: bool = False
+    mouse_move: bool = False
+    drag: bool = False
     scroll: bool = False
+    cursor_position: bool = False
+    type: bool = False
     key: bool = False
 
 
@@ -66,11 +69,20 @@ class DeviceCapabilities(BaseModel):
     dangerous_mode: bool = False
 
 
+_FULL_INTERACT = InteractCapabilities(
+    click=True, double_click=True, right_click=True, mouse_move=True,
+    drag=True, scroll=True, cursor_position=True, type=True, key=True,
+)
+
+_TOUCH_INTERACT = InteractCapabilities(
+    # Touchscreen: no right_click, mouse_move, or cursor_position
+    click=True, double_click=True, drag=True, scroll=True, type=True, key=True,
+)
+
 LINUX_CAPABILITIES = DeviceCapabilities(
     lifecycle=LifecycleCapabilities(provision=True, stop=True, start=True, terminate=True),
-    observe=ObserveCapabilities(ax_tree=True, ocr=True, screenshot=True),
-    interact=InteractCapabilities(click=True, type_text=True, fill_form=True, select=True, scroll=True, key=True),
-    read_content=ReadCapabilities(text=True, headings=True, tables=True, links=True, regions=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_FULL_INTERACT,
     files=FileCapabilities(upload=True, download=True, path_read=True),
     network=NetworkCapabilities(proxy=True, capture=True),
     screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
@@ -79,8 +91,8 @@ LINUX_CAPABILITIES = DeviceCapabilities(
 
 MACOS_CAPABILITIES = DeviceCapabilities(
     lifecycle=LifecycleCapabilities(provision=True, terminate=True),
-    observe=ObserveCapabilities(ax_tree=True, screenshot=True),
-    interact=InteractCapabilities(click=True, type_text=True, scroll=True, key=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_FULL_INTERACT,
     files=FileCapabilities(upload=True, download=True, path_read=True),
     network=NetworkCapabilities(proxy=True, capture=True),
     screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
@@ -89,8 +101,8 @@ MACOS_CAPABILITIES = DeviceCapabilities(
 
 WINDOWS_CAPABILITIES = DeviceCapabilities(
     lifecycle=LifecycleCapabilities(provision=True, stop=True, start=True, terminate=True, snapshot=True),
-    observe=ObserveCapabilities(ax_tree=True, screenshot=True),
-    interact=InteractCapabilities(click=True, type_text=True, fill_form=True, select=True, scroll=True, key=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_FULL_INTERACT,
     files=FileCapabilities(upload=True, download=True, path_read=True),
     network=NetworkCapabilities(proxy=True, capture=True),
     screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
@@ -99,10 +111,9 @@ WINDOWS_CAPABILITIES = DeviceCapabilities(
 
 ANDROID_CAPABILITIES = DeviceCapabilities(
     lifecycle=LifecycleCapabilities(provision=True, terminate=True),
-    observe=ObserveCapabilities(ax_tree=True, screenshot=True),
-    interact=InteractCapabilities(click=True, type_text=True, scroll=True, key=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_TOUCH_INTERACT,
     network=NetworkCapabilities(proxy=True, capture=True),
-    # Android screenrecord hard-limits each file to 3 minutes
     screen_recording=ScreenRecordingCapabilities(supported=True, max_duration_seconds=180, output_format="mp4"),
     streaming=True,
 )
@@ -110,16 +121,15 @@ ANDROID_CAPABILITIES = DeviceCapabilities(
 IOS_SIM_CAPABILITIES = DeviceCapabilities(
     lifecycle=LifecycleCapabilities(provision=True, terminate=True, snapshot=True),
     observe=ObserveCapabilities(screenshot=True),
-    interact=InteractCapabilities(click=True, type_text=True, scroll=True, key=True),
+    interact=_TOUCH_INTERACT,
     screen_recording=ScreenRecordingCapabilities(supported=True, output_format="mp4"),
     streaming=True,
 )
 
 BROWSER_CAPABILITIES = DeviceCapabilities(
     lifecycle=LifecycleCapabilities(provision=True, terminate=True),
-    observe=ObserveCapabilities(ax_tree=True, screenshot=True),
-    interact=InteractCapabilities(click=True, type_text=True, fill_form=True, select=True, scroll=True),
-    read_content=ReadCapabilities(text=True, headings=True, tables=True, links=True),
+    observe=ObserveCapabilities(screenshot=True, ax_tree=True),
+    interact=_FULL_INTERACT,
     screen_recording=ScreenRecordingCapabilities(supported=True, output_format="webm"),
 )
 

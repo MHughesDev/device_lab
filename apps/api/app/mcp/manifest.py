@@ -8,41 +8,45 @@ from __future__ import annotations
 from app.mcp.capabilities import DeviceCapabilities, get_capabilities
 from app.mcp.permissions import Role, allowed_tools
 
-# States in which interaction tools are valid
 INTERACT_STATES = {"ready"}
-# States in which observe tools are valid
 OBSERVE_STATES = {"ready", "stopping", "stopped"}
-# States in which lifecycle tools are valid
 LIFECYCLE_STATES = {"requested", "preflight_blocked", "provisioning",
                     "bootstrapping_agent", "ready", "stopping", "stopped"}
 
 
 def _capability_tools(caps: DeviceCapabilities, device_state: str) -> set[str]:
-    """Tools derivable purely from device capabilities and state."""
     tools: set[str] = {"workspace_status", "list_devices", "get_device", "list_templates", "cost_status"}
 
     if device_state in OBSERVE_STATES:
-        if caps.observe.ax_tree:
-            tools.add("observe")
         if caps.observe.screenshot:
-            tools.add("observe")
+            tools.add("screenshot")
+        if caps.observe.ax_tree:
+            tools.add("get_accessibility_tree")
 
     if device_state in INTERACT_STATES:
-        if caps.interact.click:
+        interact = caps.interact
+        if interact.click:
             tools.add("click")
-        if caps.interact.type_text:
-            tools.add("type_text")
-        if caps.interact.fill_form:
-            tools.add("fill_form")
-        if caps.interact.select:
-            tools.add("select_option")
-        if caps.interact.scroll:
+        if interact.double_click:
+            tools.add("double_click")
+        if interact.right_click:
+            tools.add("right_click")
+        if interact.mouse_move:
+            tools.add("mouse_move")
+        if interact.drag:
+            tools.add("drag")
+        if interact.scroll:
             tools.add("scroll")
-        if caps.interact.key:
-            tools.add("wait_for")
-        tools.add("run_steps")
-        tools.add("read_content")
+        if interact.cursor_position:
+            tools.add("cursor_position")
+        if interact.type:
+            tools.add("type")
+        if interact.key:
+            tools.add("key")
         tools.add("get_evidence")
+
+        if caps.screen_recording.supported:
+            tools |= {"start_recording", "stop_recording", "get_recording_status", "get_recording_artifact"}
 
     if device_state in LIFECYCLE_STATES:
         if caps.lifecycle.stop:
@@ -55,11 +59,7 @@ def _capability_tools(caps: DeviceCapabilities, device_state: str) -> set[str]:
     return tools
 
 
-def build_manifest(
-    family: str,
-    device_state: str,
-    role: Role,
-) -> dict:
+def build_manifest(family: str, device_state: str, role: Role) -> dict:
     caps = get_capabilities(family)
     cap_tools = _capability_tools(caps, device_state)
     role_tools = allowed_tools(role)
@@ -76,7 +76,6 @@ def build_manifest(
         "role": role.name,
         "capabilities": caps.model_dump(),
         "limits": {
-            "max_steps_per_batch": 50,
             "observation_tier_max": "screenshot" if not caps.observe.vlm else "vlm",
             "dangerous_mode": role >= Role.dangerous,
         },
