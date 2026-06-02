@@ -2,7 +2,7 @@
 
 > **Local-first device testing for human operators and AI agents, with optional BYOC cloud capacity for workloads that require additional scale, duration, or device coverage.**
 
-DeviceLab creates and manages test devices that run locally on the developer machine or, when selected, in the user's own AWS account. Each device is streamed into the web application as a dedicated workspace tab with its own display, input controls, logs, and session actions. The same device capabilities are exposed as scoped MCP contracts, allowing AI coding agents such as Claude Code or Cursor to inspect device state, execute interactions, and test applications through emulated or cloud-backed device environments.
+DeviceLab creates and manages test devices that run locally on the developer machine or, when cloud optionally selected over local AWS VMs are provisioned. Each device is streamed into the web application as a dedicated workspace tab with its own display, input controls, logs, and session actions. The same device capabilities are exposed as scoped MCP contracts, allowing AI coding agents such as Claude Code or Cursor to inspect device state, execute interactions, and test applications through emulated or cloud-backed device environments.
 
 The control plane runs on `localhost`. The web UI provides human session management and operational visibility, while MCP provides the automation interface for agents. Cloud execution is optional and uses BYOC resources in the user's AWS account; DeviceLab does not introduce a hosted SaaS control plane.
 
