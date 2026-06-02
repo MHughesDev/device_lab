@@ -2,7 +2,7 @@
 
 > **Local-first device testing for human operators and AI agents, with optional BYOC cloud capacity for workloads that require additional scale, duration, or device coverage.**
 
-DeviceLab creates and manages test devices that run locally on the developer machine or, when cloud is optionally selected over local AWS VMs are provisioned. Each device is streamed into the web application as a dedicated workspace tab with its own display, input controls, logs, and session actions. The same device capabilities are exposed as scoped MCP contracts, allowing AI coding agents such as Claude Code or Cursor to inspect device state, execute interactions, and test applications through emulated or cloud-backed device environments.
+DeviceLab creates and manages test devices that run locally on the developer machine or, when selected, in the user's own AWS account. Each device is streamed into the web application as a dedicated workspace tab with its own display, input controls, logs, and session actions. The same device capabilities are exposed as scoped MCP contracts, allowing AI coding agents such as Claude Code or Cursor to inspect device state, execute interactions, and test applications through emulated or cloud-backed device environments.
 
 The control plane runs on `localhost`. The web UI provides human session management and operational visibility, while MCP provides the automation interface for agents. Cloud execution is optional and uses BYOC resources in the user's AWS account; DeviceLab does not introduce a hosted SaaS control plane.
 
@@ -11,12 +11,10 @@ The control plane runs on `localhost`. The web UI provides human session managem
 | Family | Local path | Optional cloud path |
 |--------|------------|---------------------|
 | Linux | Host-local runtime when supported by the machine and adapter. | EC2 Linux lifecycle with SSM bootstrap. |
-| Browser | Host-local browser sessions. | Cloud-backed browser sessions for isolation, duration, or scale. |
 | Android | Host-local emulator or attached-device paths where supported. | Nested-virtualization emulator capacity and AWS Device Farm. |
 | Windows | Host-local VM or attached-host paths where supported. | EC2 Windows capacity. |
 | macOS | Host-local macOS paths where supported. | Mac Dedicated Host capacity. |
 | iOS Simulator | Local macOS simulator path. | macOS cloud host path where configured. |
-| Real iOS | No local real-device path in the OSS core. | AWS Device Farm-backed real-device coverage. |
 
 ## ✅ Core positioning
 
@@ -31,7 +29,7 @@ DeviceLab is organized around three operating principles:
 | Mode | Best for | Resource location | Control plane |
 |------|----------|-------------------|---------------|
 | 🏠 Local | Local development, short feedback loops, and device families supported by the host machine. | Developer machine | `localhost` |
-| ☁️ BYOC cloud | Additional capacity, AWS-only device families, real Device Farm coverage, and longer-running sessions. | User-owned AWS account | `localhost` |
+| ☁️ BYOC cloud | Additional capacity, AWS-only device families, AWS Device Farm coverage, and longer-running sessions. | User-owned AWS account | `localhost` |
 | 🔀 Hybrid | Local iteration with selected cloud sessions for coverage, performance, duration, or device availability. | Local machine + user-owned AWS account | `localhost` |
 
 DeviceLab does not require a permanent choice between local and cloud execution. A workspace can run routine sessions locally and start cloud-backed sessions only for tasks that require cloud capacity or cloud-only device access.
@@ -50,7 +48,7 @@ Local developer machine
 Optional user-owned AWS account
 ├── EC2 Linux / Windows / macOS capacity
 ├── Android emulator capacity with nested virtualization
-├── AWS Device Farm real iOS / Android devices
+├── AWS Device Farm Android devices
 ├── S3 artifact and evidence storage
 └── Runtime agents bootstrapped through SSM + mTLS
 ```
@@ -74,7 +72,6 @@ The same control-plane services coordinate local and cloud execution: lifecycle 
 |---------|------------------|
 | MCP server | `mcp` via FastMCP |
 | WebRTC streaming | `aiortc` |
-| Browser adapter | `browser-use` |
 | Android control | `uiautomator2` + `adb` |
 | AWS cost | `boto3` + `awspricing` |
 | Device FSM | `pytransitions` |
