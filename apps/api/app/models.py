@@ -695,6 +695,24 @@ class TimelineEvent(SQLModel):
 
 
 # ---------------------------------------------------------------------------
+# Phase 12 — App Settings
+# ---------------------------------------------------------------------------
+
+class AppSetting(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    workspace_id: uuid.UUID = Field(foreign_key="workspace.id", index=True)
+    group: str = Field(max_length=64, index=True)   # cloud|host|streaming|mcp|manifests|security
+    key: str = Field(max_length=128)
+    value: str | None = Field(default=None, sa_column=Column(Text))  # JSON-encoded
+    is_secret_ref: bool = Field(default=False)   # value is a SecretRef name, not the actual secret
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class SettingsGroupUpdate(SQLModel):
+    values: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
 # Shared
 # ---------------------------------------------------------------------------
 
