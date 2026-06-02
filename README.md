@@ -1,42 +1,42 @@
 # DeviceLab
 
-> **A localhost mission control for cloud devices — built for agents, safe for humans, and paid for only in your own AWS account.**
+> **Local-first device testing for humans and AI agents, with optional BYOC cloud capacity when local resources are not enough.**
 
-DeviceLab is an open-source, local-first, BYOC (Bring Your Own Cloud) device testing platform. It turns your laptop into the control tower and your AWS account into the launchpad for Linux, Android, Windows, macOS, iOS Simulator, real-device, and browser environments.
+DeviceLab is an open-source control plane for creating, operating, and auditing device test environments. It starts on the developer machine and can optionally extend into the user's own AWS account for larger, longer-running, or hardware-specific workloads.
 
-No hosted control plane. No reseller markup. No "please paste the secret into chat" energy. Just a local API, a web cockpit, an MCP gateway, and a fleet of disposable devices that can be driven by humans or AI agents.
+The default posture is local-first: the control plane runs on `localhost`, the web UI is a local operator console, and MCP is the primary automation interface for coding agents. When a team needs more capacity or device coverage, DeviceLab can provision cloud resources in that team's AWS account without introducing a DeviceLab-hosted SaaS control plane.
 
-## The vibe
+## ✅ Core positioning
 
-Imagine a tiny NASA console for test devices:
+DeviceLab is designed around three operating principles:
 
-- **Launch** a Linux VM, Android emulator, browser session, Windows host, macOS runner, iOS Simulator, or real Device Farm target.
-- **Observe** through the cheapest useful signal first: accessibility tree, then OCR, then screenshots, then gated VLMs.
-- **Act** with semantic commands, batched steps, screen-version checks, and device-family capability maps.
-- **Record** recipes, artifacts, timelines, logs, screenshots, and replayable evidence.
-- **Stop spending money** with cost estimates, caps, lifecycle cleanup, and audit trails that make expensive paths explain themselves.
+1. **🏠 Local-first by default.** Run the control plane locally, keep the operator surface on `localhost`, and use local runtimes where they fit the workload.
+2. **☁️ Optional cloud expansion.** Choose BYOC AWS provisioning for EC2, Mac Dedicated Host, Android emulator capacity, AWS Device Farm targets, S3 artifacts, and runtime agents when cloud execution is the right fit.
+3. **🤖 Agent-native automation.** Expose device capabilities through MCP so AI agents can observe, act, record, and replay work without relying on screenshot-only loops.
 
-## North star
+## 🧭 Operating modes
 
-DeviceLab's finished form is a local control plane with three promises:
+| Mode | Best for | Resource location | Control plane |
+|------|----------|-------------------|---------------|
+| 🏠 Local | Fast setup, local development, short feedback loops, and host-available device families. | Developer machine | `localhost` |
+| ☁️ BYOC cloud | Scale-out capacity, AWS-only device families, real Device Farm coverage, and longer-running sessions. | User-owned AWS account | `localhost` |
+| 🔀 Hybrid | Local iteration with selective cloud sessions for coverage, performance, or device availability. | Local machine + user-owned AWS account | `localhost` |
 
-1. **Agent-native first.** MCP is the primary interface, not a bolt-on. Agents discover scoped tools, observe structured state, execute low-round-trip actions, and leave evidence behind.
-2. **Your cloud, your devices.** EC2, Mac Dedicated Host, Android emulators, AWS Device Farm, S3 artifacts, and runtime agents live in the user's AWS account — DeviceLab does not host them.
-3. **Safety with receipts.** Secrets stay behind `SecretRef` indirection in the OS keychain, dangerous actions are gated and audited, costs are visible, and the audit log is append-only.
+DeviceLab does not require users to choose one permanent deployment model. A workspace can stay local for routine work and use cloud-backed devices only when the task requires them.
 
-## Where the repo is headed
+## 🧱 End-state architecture
 
 When complete, the repository resolves into this shape:
 
 ```text
 Local developer machine
 ├── Web UI            React 19 + Vite + TanStack browser workspace
-├── Control API       FastAPI + SQLModel + Postgres device brain
+├── Control API       FastAPI + SQLModel + Postgres device control plane
 ├── MCP Gateway       FastMCP tool surface for coding agents
 ├── Stream Gateway    aiortc WebRTC media + input data channel
 └── Local runtime     optional local devices with resource accounting
 
-User-owned AWS account
+Optional user-owned AWS account
 ├── EC2 Linux / Windows / macOS capacity
 ├── Android emulator capacity with nested virtualization
 ├── AWS Device Farm real iOS / Android devices
@@ -44,43 +44,41 @@ User-owned AWS account
 └── Runtime agents bootstrapped through SSM + mTLS
 ```
 
-The core stays boring in the best way: lifecycle services, cost guardrails, identity broker, observation/action hub, recipe runner, artifact store, evidence replay, and a versioned adapter SPI. Device-family quirks belong in adapters, not the control-plane bloodstream.
+The core services remain shared across local and cloud execution: lifecycle management, placement, cost guardrails, identity brokerage, observation/action routing, recipe execution, artifact capture, evidence replay, and the versioned adapter SPI. Device-family-specific behavior belongs in adapters, not in the control-plane core.
 
-## Current status
+## 📌 Current status
 
-DeviceLab is past the "blank napkin" stage and into a structured buildout:
+DeviceLab is in structured buildout:
 
 - The authoritative product contract is captured in the spec.
-- The long-term roadmap tracks the full phase sequence and end-state component map.
+- The long-term roadmap tracks the phase sequence and end-state component map.
 - The foundational stack is FastAPI + SQLModel + Postgres, React 19 + Vite + TanStack, Docker Compose, FastMCP, and aiortc.
-- The remaining northbound work is centered on low-latency streaming, manifests, the browser-tab workspace, and root/cloud infrastructure settings.
+- The remaining northbound work focuses on low-latency streaming, device manifests, the browser-tab workspace, and root/cloud infrastructure settings.
 
-## Architecture invariants
-
-These are not decorative. They are load-bearing:
+## 🔒 Architecture invariants
 
 | Invariant | Meaning |
 |-----------|---------|
-| Localhost-only control plane | The API is a local operator surface, not an internet service. |
-| BYOC hard boundary | All cloud resources are created in the user's account. |
-| MCP first | Agents are first-class operators; web UI is the human cockpit. |
-| SecretRef only | Plaintext secrets do not enter model context. |
-| Append-only audit | HMAC-SHA256 hash chain; history is evidence, not clay. |
-| Adapter SPI | Device families plug in through versioned contracts. |
+| 🏠 Localhost-only control plane | The API is a local operator surface, not a public internet service. |
+| ☁️ Optional BYOC boundary | Cloud resources, when used, are created in the user's AWS account. |
+| 🤖 MCP first | Agents are first-class operators; the web UI is the human cockpit. |
+| 🔐 SecretRef only | Plaintext secrets do not enter model context. |
+| 🧾 Append-only audit | HMAC-SHA256 hash chain; history is tamper-evident evidence. |
+| 🧩 Adapter SPI | Device families plug in through versioned contracts. |
 
-## What DeviceLab operates
+## 🖥️ Supported device families
 
-| Family | Why it matters |
-|--------|----------------|
-| Linux | The first vertical slice: provisioning, SSM bootstrap, lifecycle, streaming, cleanup. |
-| Browser | Proves semantic automation beyond VM management. |
-| Android | Emulator and real-device paths for mobile workflows. |
-| Windows | Desktop automation and compatibility coverage. |
-| macOS | Dedicated Host capacity and Apple-platform workflows. |
-| iOS Simulator | Fast Apple mobile loops where simulator fidelity is enough. |
-| Real iOS | Device Farm-backed coverage when physical devices matter. |
+| Family | Local path | Cloud path |
+|--------|------------|------------|
+| Linux | Local runtime where available. | EC2 Linux lifecycle and SSM bootstrap. |
+| Browser | Local browser sessions. | Cloud-backed browser sessions when needed. |
+| Android | Local emulator/device paths where available. | Nested-virtualization emulator capacity and Device Farm. |
+| Windows | Local VM/host paths where available. | EC2 Windows capacity. |
+| macOS | Local Mac host paths where available. | Mac Dedicated Host capacity. |
+| iOS Simulator | Local macOS simulator path. | macOS cloud host path where configured. |
+| Real iOS | Not local in OSS core. | AWS Device Farm-backed real-device coverage. |
 
-## Locked dependency spine
+## 🧰 Locked dependency spine
 
 | Concern | Package / source |
 |---------|------------------|
@@ -95,7 +93,7 @@ These are not decorative. They are load-bearing:
 | Network proxy | `mitmproxy` |
 | Audit log | Small in-repo HMAC-SHA256 implementation |
 
-## Quick orientation for agents
+## 🤖 Quick orientation for agents
 
 1. Read `README.md`, then `AGENTS.md`.
 2. Run `make skills:list` and read any matching skill before planning.
@@ -103,7 +101,7 @@ These are not decorative. They are load-bearing:
 4. Preserve the architecture invariants above.
 5. If security, data integrity, or policy semantics are unclear, stop instead of guessing.
 
-## Canonical commands
+## 🛠️ Canonical commands
 
 ```bash
 make help          # list the command surface
@@ -115,7 +113,7 @@ make test          # backend tests with coverage
 make skills:list   # enumerate procedural playbooks
 ```
 
-## Bottom links
+## 🔗 Links
 
 - [Authoritative spec](spec/spec.md)
 - [Long-term implementation plan](docs/roadmap/long-term-plan.md)
