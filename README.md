@@ -2,9 +2,21 @@
 
 > **Local-first device testing for human operators and AI agents, with optional BYOC cloud capacity for workloads that require additional scale, duration, or device coverage.**
 
-DeviceLab is an open-source control plane for creating, operating, and auditing device test environments. The control plane runs on the developer machine and can optionally provision resources in the user's own AWS account for larger, longer-running, or hardware-specific workloads.
+DeviceLab creates and manages test devices that run locally on the developer machine or, when selected, in the user's own AWS account. Each device is streamed into the web application as a dedicated workspace tab with its own display, input controls, logs, and session actions. The same device capabilities are exposed as scoped MCP contracts, allowing AI coding agents such as Claude Code or Cursor to inspect device state, execute interactions, and test applications through emulated or cloud-backed device environments.
 
-The default posture is local-first: the API runs on `localhost`, the web UI provides local session management and operational visibility, and MCP provides the automation interface for coding agents. When a team needs more capacity or device coverage, DeviceLab can provision cloud resources in that team's AWS account without introducing a DeviceLab-hosted SaaS control plane.
+The control plane runs on `localhost`. The web UI provides human session management and operational visibility, while MCP provides the automation interface for agents. Cloud execution is optional and uses BYOC resources in the user's AWS account; DeviceLab does not introduce a hosted SaaS control plane.
+
+## 🖥️ Supported device families
+
+| Family | Local path | Optional cloud path |
+|--------|------------|---------------------|
+| Linux | Host-local runtime when supported by the machine and adapter. | EC2 Linux lifecycle with SSM bootstrap. |
+| Browser | Host-local browser sessions. | Cloud-backed browser sessions for isolation, duration, or scale. |
+| Android | Host-local emulator or attached-device paths where supported. | Nested-virtualization emulator capacity and AWS Device Farm. |
+| Windows | Host-local VM or attached-host paths where supported. | EC2 Windows capacity. |
+| macOS | Host-local macOS paths where supported. | Mac Dedicated Host capacity. |
+| iOS Simulator | Local macOS simulator path. | macOS cloud host path where configured. |
+| Real iOS | No local real-device path in the OSS core. | AWS Device Farm-backed real-device coverage. |
 
 ## ✅ Core positioning
 
@@ -24,17 +36,16 @@ DeviceLab is organized around three operating principles:
 
 DeviceLab does not require a permanent choice between local and cloud execution. A workspace can run routine sessions locally and start cloud-backed sessions only for tasks that require cloud capacity or cloud-only device access.
 
-## 🧱 End-state architecture
-
-When complete, the repository is expected to contain these primary runtime surfaces:
+## 🧱 Runtime surfaces
 
 ```text
 Local developer machine
 ├── Web UI            React 19 + Vite + TanStack session management UI
+│   └── Device tabs   streamed display, input controls, logs, and session actions
 ├── Control API       FastAPI + SQLModel + Postgres device control plane
-├── MCP Gateway       FastMCP capability and action interface for agents
+├── MCP Gateway       FastMCP capability and action contracts for agents
 ├── Stream Gateway    aiortc WebRTC media + input data channel
-└── Local runtime     optional local device execution with resource accounting
+└── Local runtime     local device execution with resource accounting
 
 Optional user-owned AWS account
 ├── EC2 Linux / Windows / macOS capacity
@@ -44,16 +55,7 @@ Optional user-owned AWS account
 └── Runtime agents bootstrapped through SSM + mTLS
 ```
 
-The same control-plane services coordinate both local and cloud execution: lifecycle management, placement, cost guardrails, identity brokerage, observation/action routing, recipe execution, artifact capture, evidence replay, and the versioned adapter SPI. Device-family-specific behavior is isolated in adapters rather than embedded in core services.
-
-## 📌 Current status
-
-DeviceLab is in active structured buildout:
-
-- The authoritative product contract is captured in the spec.
-- The long-term roadmap tracks the phase sequence and end-state component map.
-- The foundational stack is FastAPI + SQLModel + Postgres, React 19 + Vite + TanStack, Docker Compose, FastMCP, and aiortc.
-- The remaining roadmap work focuses on low-latency streaming, device manifests, the browser-tab workspace, and root/cloud infrastructure settings.
+The same control-plane services coordinate local and cloud execution: lifecycle management, placement, cost guardrails, identity brokerage, observation/action routing, recipe execution, artifact capture, evidence replay, and the versioned adapter SPI. Device-family-specific behavior is isolated in adapters rather than embedded in core services.
 
 ## 🔒 Architecture invariants
 
@@ -65,18 +67,6 @@ DeviceLab is in active structured buildout:
 | 🔐 SecretRef only | Secrets are referenced through SecretRef indirection and are not exposed as plaintext to model context. |
 | 🧾 Append-only audit | Audit entries use an HMAC-SHA256 hash chain to make historical records tamper-evident. |
 | 🧩 Adapter SPI | Device families integrate through versioned adapter contracts. |
-
-## 🖥️ Supported device families
-
-| Family | Local path | Cloud path |
-|--------|------------|------------|
-| Linux | Host-local runtime when supported by the machine and adapter. | EC2 Linux lifecycle and SSM bootstrap. |
-| Browser | Host-local browser sessions. | Cloud-backed browser sessions for isolation, duration, or scale. |
-| Android | Host-local emulator or attached-device paths where supported. | Nested-virtualization emulator capacity and Device Farm. |
-| Windows | Host-local VM or attached-host paths where supported. | EC2 Windows capacity. |
-| macOS | Host-local macOS paths where supported. | Mac Dedicated Host capacity. |
-| iOS Simulator | Local macOS simulator path. | macOS cloud host path where configured. |
-| Real iOS | No local real-device path in the OSS core. | AWS Device Farm-backed real-device coverage. |
 
 ## 🧰 Locked dependency spine
 
