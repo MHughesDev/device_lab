@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
+import { DeviceTabStore } from "@/stores/deviceTabs"
+import { deviceTitle } from "@/lib/types"
 
 export const Route = createFileRoute("/_layout/devices")({
   component: DevicesPage,
@@ -10,6 +12,9 @@ export const Route = createFileRoute("/_layout/devices")({
 interface Device {
   id: string
   family: string
+  name: string | null
+  display_mode: "headless" | "interactive"
+  mcp_exposed: boolean
   state: string
   phase: string | null
   cost_estimate: number | null
@@ -115,6 +120,25 @@ function DevicesPage() {
             </div>
 
             <div className="flex gap-2">
+              {(device.state === "ready" || device.state === "stopped") && (
+                <button
+                  className="rounded border bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                  onClick={() => {
+                    DeviceTabStore.openTab({
+                      id: device.id,
+                      title: deviceTitle(device),
+                      family: device.family as any,
+                      state: device.state,
+                      displayMode: device.display_mode,
+                      mcpExposed: device.mcp_exposed,
+                      pinned: false,
+                    })
+                    navigate({ to: "/workspace" })
+                  }}
+                >
+                  Open
+                </button>
+              )}
               {device.state === "ready" && (
                 <button
                   className="rounded border px-3 py-1.5 text-xs font-medium disabled:opacity-50"

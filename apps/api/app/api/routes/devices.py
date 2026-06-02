@@ -2,7 +2,9 @@ import json
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile
+from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlmodel import select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -313,3 +315,102 @@ async def capture_device_manifest(
         "name": manifest.title,
         "family": manifest.family,
     }
+
+
+# ── Phase 11: rename + file push/pull ─────────────────────────────────────────
+
+class DevicePatch(BaseModel):
+    name: str | None = None
+    display_mode: str | None = None
+    mcp_exposed: bool | None = None
+
+
+@router.patch("/{device_id}", response_model=DevicePublic)
+def patch_device(
+    db: SessionDep,
+    device_id: uuid.UUID,
+    patch: DevicePatch,
+    _current_user: CurrentUser,
+) -> DevicePublic:
+    """Update mutable device fields (name, display_mode, mcp_exposed)."""
+    device = db.get(Device, device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    if patch.name is not None:
+        device.name = patch.name.strip() or None
+    if patch.display_mode is not None:
+        if patch.display_mode not in ("headless", "interactive"):
+            raise HTTPException(status_code=422, detail="display_mode must be headless or interactive")
+        device.display_mode = patch.display_mode
+    if patch.mcp_exposed is not None:
+        device.mcp_exposed = patch.mcp_exposed
+    device.updated_at = datetime.now(UTC)
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+    return _to_public(device)
+
+
+@router.post("/{device_id}/files/push", status_code=200)
+async def push_file(
+    db: SessionDep,
+    device_id: uuid.UUID,
+    file: UploadFile,
+    remote_path: str = "/tmp/",
+    _current_user: CurrentUser = None,
+) -> dict:
+    """Push a local file to the device via the channel."""
+    device = db.get(Device, device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    if device.state != "ready":
+        raise HTTPException(status_code=409, detail="Device is not ready")
+
+    data = await file.read()
+    if len(data) > 500 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File exceeds 500 MB limit")
+
+    dest = remote_path if not remote_path.endswith("/") else remote_path + file.filename
+
+    try:
+        from app.adapters.registry import AdapterRegistry
+        from app.stream.factory import media_source_for
+        adapter_cls = AdapterRegistry.get(device.family)
+        adapter = adapter_cls.__new__(adapter_cls)
+        ch = await adapter.get_channel(device)
+        await ch.push_file(data, dest)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File push failed: {e}")
+
+    return {"remote_path": dest, "bytes": len(data)}
+
+
+@router.get("/{device_id}/files/pull")
+async def pull_file(
+    db: SessionDep,
+    device_id: uuid.UUID,
+    path: str,
+    _current_user: CurrentUser = None,
+) -> Response:
+    """Pull a file from the device."""
+    device = db.get(Device, device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    if device.state != "ready":
+        raise HTTPException(status_code=409, detail="Device is not ready")
+
+    try:
+        from app.adapters.registry import AdapterRegistry
+        adapter_cls = AdapterRegistry.get(device.family)
+        adapter = adapter_cls.__new__(adapter_cls)
+        ch = await adapter.get_channel(device)
+        data = await ch.pull_file(path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File pull failed: {e}")
+
+    fname = path.split("/")[-1] or "file"
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
