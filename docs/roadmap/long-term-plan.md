@@ -9,7 +9,7 @@ updated: "2026-06-01"
 
 # DeviceLab — Long-term Implementation Plan
 
-**Progress: 92%** `██████████` — 11 of 12 phases complete (01–11); Phase 12 next
+**Progress: 100%** `██████████` — 12 of 12 phases complete
 
 ## Strategic outcome
 
@@ -98,7 +98,7 @@ manifests, memory accounting) on top of the local-first runtime.
 | 09 | ✅ complete | Low-latency streaming media layer | `MediaSource`/`InputSink` SPI; aiortc encoded-passthrough; per-family HW capture+encode (Android scrcpy first); attach/detach; quality profiles; local-vs-cloud ICE |
 | 10 | ✅ complete | Device manifests & environment registry | Declarative `DeviceManifest` (named env spec, not a disk image); manifest registry; capture-from-device; create-from-manifest (fresh base + install from spec); import/export |
 | 11 | ✅ complete | Device workspace UI | Browser-tab UX; New/Existing create wizard; per-tab screen pane + log panel; full per-device options menu; naming |
-| 12 | ⬜ planned | Root & cloud infra settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, manifests, security |
+| 12 | ✅ complete | Root & cloud infra settings | Server-level settings: cloud infra (AWS via SecretRef), local host budget, streaming, MCP, manifests, security |
 
 ---
 

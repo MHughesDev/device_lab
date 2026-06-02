@@ -38,6 +38,44 @@ class ResourceLedger:
         self._headroom_mb = int(self._caps.total_ram_mb * _HOST_RAM_HEADROOM_FRACTION)
 
     # ------------------------------------------------------------------
+    # Phase 12 settings wiring
+    # ------------------------------------------------------------------
+
+    def apply_settings(self, db, workspace_id) -> None:
+        """Re-read Phase 12 host budget settings and update ledger totals.
+
+        Refuses to lower the effective device RAM budget below currently
+        committed resources (raises ValueError). Caller must confirm/force.
+        """
+        from app.services.settings_service import get_group
+        host_cfg = get_group(db, workspace_id, "host")
+
+        with self._lock:
+            new_headroom_pct: int = int(host_cfg.get("headroom_pct") or 20)
+            new_headroom_mb = int(self._caps.total_ram_mb * new_headroom_pct / 100)
+
+            budget_ram = host_cfg.get("device_ram_budget_mb")
+            if budget_ram is not None:
+                committed_ram = self.committed().ram_mb
+                if int(budget_ram) < committed_ram:
+                    raise ValueError(
+                        f"Cannot lower RAM budget to {budget_ram} MB — "
+                        f"{committed_ram} MB already committed to live devices"
+                    )
+                from app.services.local.host_probe import HostCapabilities as HC
+                self._caps = HC(
+                    total_ram_mb=int(budget_ram) + new_headroom_mb,
+                    total_vcpu=float(host_cfg.get("device_cpu_budget_cores") or self._caps.total_vcpu),
+                    free_disk_mb=self._caps.free_disk_mb,
+                )
+
+            self._headroom_mb = new_headroom_mb
+            log.info(
+                "Ledger settings applied: headroom=%d MB, total_ram=%d MB",
+                self._headroom_mb, self._caps.total_ram_mb,
+            )
+
+    # ------------------------------------------------------------------
     # Capacity queries
     # ------------------------------------------------------------------
 
@@ -122,6 +160,74 @@ class ResourceLedger:
                     db.delete(row)
                     db.commit()
                     log.debug("Ledger released reservation for device %s", did)
+
+    # ------------------------------------------------------------------
+    # Settings integration (Phase 12)
+    # ------------------------------------------------------------------
+
+    def apply_settings(self, db, workspace_id) -> None:
+        """Read the 'host' settings group and update headroom / caps in-place.
+
+        Only non-None values are applied.  Guards:
+        - Never sets headroom above what leaves the currently committed RAM
+          still admissible (i.e. headroom_mb < total_ram_mb - committed_ram_mb).
+        - Never sets total usable RAM below what is already committed.
+        """
+        try:
+            from app.services.settings_service import get_group
+            host_cfg = get_group(db, workspace_id, "host")
+        except Exception as exc:
+            log.warning("apply_settings: could not load host settings: %s", exc)
+            return
+
+        with self._lock:
+            # --- headroom_pct ---
+            headroom_pct = host_cfg.get("headroom_pct")
+            if headroom_pct is not None:
+                new_headroom_mb = int(self._caps.total_ram_mb * headroom_pct / 100)
+                # Safety: never push headroom so high that committed RAM would be
+                # over the usable budget.
+                committed_ram = self.committed().ram_mb
+                max_safe_headroom = max(0, self._caps.total_ram_mb - committed_ram)
+                new_headroom_mb = min(new_headroom_mb, max_safe_headroom)
+                self._headroom_mb = new_headroom_mb
+                log.debug(
+                    "apply_settings: headroom set to %d MB (%d%% of %d MB total)",
+                    new_headroom_mb, headroom_pct, self._caps.total_ram_mb,
+                )
+
+            # --- device_ram_budget_mb ---
+            ram_budget = host_cfg.get("device_ram_budget_mb")
+            if ram_budget is not None:
+                # Override total_ram_mb on the caps object by swapping the dataclass
+                from app.services.local.host_probe import HostCapabilities
+                self._caps = HostCapabilities(
+                    os=self._caps.os,
+                    arch=self._caps.arch,
+                    docker_available=self._caps.docker_available,
+                    virtualization_available=self._caps.virtualization_available,
+                    is_apple_hardware=self._caps.is_apple_hardware,
+                    total_ram_mb=int(ram_budget),
+                    total_vcpu=self._caps.total_vcpu,
+                    free_disk_mb=self._caps.free_disk_mb,
+                )
+                log.debug("apply_settings: RAM budget overridden to %d MB", ram_budget)
+
+            # --- device_cpu_budget_cores ---
+            cpu_budget = host_cfg.get("device_cpu_budget_cores")
+            if cpu_budget is not None:
+                from app.services.local.host_probe import HostCapabilities
+                self._caps = HostCapabilities(
+                    os=self._caps.os,
+                    arch=self._caps.arch,
+                    docker_available=self._caps.docker_available,
+                    virtualization_available=self._caps.virtualization_available,
+                    is_apple_hardware=self._caps.is_apple_hardware,
+                    total_ram_mb=self._caps.total_ram_mb,
+                    total_vcpu=int(cpu_budget),
+                    free_disk_mb=self._caps.free_disk_mb,
+                )
+                log.debug("apply_settings: CPU budget overridden to %d vCPUs", cpu_budget)
 
     # ------------------------------------------------------------------
     # Diagnostics
