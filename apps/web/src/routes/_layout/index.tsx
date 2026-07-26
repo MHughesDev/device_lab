@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
+import { apiFetch } from "@/lib/api"
 
 export const Route = createFileRoute("/_layout/")({
   component: StatusDashboard,
@@ -64,7 +65,7 @@ function StatusDashboard() {
   const { data: workspace, isLoading: wsLoading } = useQuery<WorkspaceStatus>({
     queryKey: ["workspace"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/workspace/")
+      const res = await apiFetch("/api/v1/workspace/")
       if (!res.ok) throw new Error("Failed to load workspace")
       return res.json()
     },
@@ -74,7 +75,7 @@ function StatusDashboard() {
   const { data: health } = useQuery<HealthStatus>({
     queryKey: ["health"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/health/")
+      const res = await apiFetch("/api/v1/health/")
       if (!res.ok) throw new Error("Failed to load health")
       return res.json()
     },

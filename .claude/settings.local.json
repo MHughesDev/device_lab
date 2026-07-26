@@ -6,7 +6,9 @@
       "Bash(rm -rf apps/mobile)",
       "Bash(cp -r /tmp/template/deploy .)",
       "Bash(cp -r /tmp/template/monitoring .)",
-      "Bash(cp -r /tmp/template/scripts .)"
+      "Bash(cp -r /tmp/template/scripts .)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)"
     ]
   }
 }

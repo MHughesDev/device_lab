@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { apiFetch } from "@/lib/api"
 
 export const Route = createFileRoute("/_layout/onboarding")({
   component: OnboardingWizard,
@@ -80,12 +80,11 @@ function StatusIcon({ status }: { status: "pass" | "warn" | "fail" }) {
 
 function OnboardingWizard() {
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const [step, setStep] = useState<Step>("connect")
   const [accountId, setAccountId] = useState<string | null>(null)
   const [preflight, setPreflight] = useState<PreflightReport | null>(null)
   const [bootstrapPlan, setBootstrapPlan] = useState<BootstrapPlan | null>(null)
-  const [deviceId, setDeviceId] = useState<string | null>(null)
+  const [_deviceId, setDeviceId] = useState<string | null>(null)
   const [form, setForm] = useState<CloudAccountForm>({
     display_name: "My AWS Account",
     region: "us-east-1",
@@ -97,7 +96,7 @@ function OnboardingWizard() {
   const [error, setError] = useState<string | null>(null)
 
   async function post(path: string, body?: unknown) {
-    const res = await fetch(path, {
+    const res = await apiFetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: body ? JSON.stringify(body) : undefined,
@@ -110,7 +109,7 @@ function OnboardingWizard() {
   }
 
   async function get(path: string) {
-    const res = await fetch(path)
+    const res = await apiFetch(path)
     if (!res.ok) throw new Error(res.statusText)
     return res.json()
   }

@@ -1,0 +1,7 @@
+{
+  "name": "device-lab",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ]
+}

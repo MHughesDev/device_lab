@@ -1,4 +1,5 @@
 // WebRTC session negotiation — Phase 11 (11-07)
+import { apiFetch } from "@/lib/api"
 
 export interface WebRTCSession {
   peer: RTCPeerConnection
@@ -40,7 +41,7 @@ export async function negotiateSession(deviceId: string): Promise<WebRTCSession>
     setTimeout(resolve, 2_000)
   })
 
-  const res = await fetch("/api/v1/stream/negotiate", {
+  const res = await apiFetch("/api/v1/stream/negotiate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

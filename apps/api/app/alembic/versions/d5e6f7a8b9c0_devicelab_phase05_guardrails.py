@@ -17,8 +17,8 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "costpolicy",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("workspace_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("workspace_id", sa.String(), nullable=False),
         sa.Column("scope", sa.String(64), nullable=False),
         sa.Column("scope_id", sa.String(255), nullable=True),
         sa.Column("soft_cap_usd", sa.String(32), nullable=True),
@@ -35,9 +35,9 @@ def upgrade() -> None:
 
     op.create_table(
         "snapshot",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("workspace_id", sa.Uuid(), nullable=False),
-        sa.Column("source_device_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("workspace_id", sa.String(), nullable=False),
+        sa.Column("source_device_id", sa.String(), nullable=False),
         sa.Column("status", sa.String(64), nullable=False),
         sa.Column("provider_snapshot_id", sa.String(255), nullable=True),
         sa.Column("size_gb", sa.Float(), nullable=True),
@@ -54,11 +54,11 @@ def upgrade() -> None:
 
     op.create_table(
         "artifact",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("workspace_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("workspace_id", sa.String(), nullable=False),
         sa.Column("session_id", sa.String(128), nullable=True),
-        sa.Column("run_id", sa.Uuid(), nullable=True),
-        sa.Column("evidence_id", sa.Uuid(), nullable=True),
+        sa.Column("run_id", sa.String(), nullable=True),
+        sa.Column("evidence_id", sa.String(), nullable=True),
         sa.Column("artifact_type", sa.String(64), nullable=False),
         sa.Column("storage_path", sa.String(1024), nullable=False),
         sa.Column("size_bytes", sa.Integer(), nullable=False),
@@ -75,11 +75,11 @@ def upgrade() -> None:
 
     op.create_table(
         "testrun",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("workspace_id", sa.Uuid(), nullable=False),
-        sa.Column("device_id", sa.Uuid(), nullable=False),
-        sa.Column("recipe_id", sa.Uuid(), nullable=True),
-        sa.Column("recipe_run_id", sa.Uuid(), nullable=True),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("workspace_id", sa.String(), nullable=False),
+        sa.Column("device_id", sa.String(), nullable=False),
+        sa.Column("recipe_id", sa.String(), nullable=True),
+        sa.Column("recipe_run_id", sa.String(), nullable=True),
         sa.Column("status", sa.String(64), nullable=False),
         sa.Column("collect_artifacts", sa.Boolean(), nullable=False),
         sa.Column("steps_json", sa.Text(), nullable=True),

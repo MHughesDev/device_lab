@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { apiFetch } from "@/lib/api"
 import { DeviceTabStore } from "@/stores/deviceTabs"
 import type { DeviceTab } from "@/stores/deviceTabs"
 import type { Device } from "@/lib/types"
@@ -75,7 +76,7 @@ export function DeviceOptionsMenu({
   const stopped = device?.state === "stopped"
 
   async function post(path: string, body?: unknown) {
-    const res = await fetch(path, {
+    const res = await apiFetch(path, {
       method: "POST",
       headers: body ? { "Content-Type": "application/json" } : {},
       body: body ? JSON.stringify(body) : undefined,
@@ -88,7 +89,7 @@ export function DeviceOptionsMenu({
   }
 
   async function patch(path: string, body: unknown) {
-    const res = await fetch(path, {
+    const res = await apiFetch(path, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

@@ -4,6 +4,7 @@
 import { useState, useCallback } from "react"
 import { Upload } from "lucide-react"
 import { toast } from "sonner"
+import { apiFetch } from "@/lib/api"
 
 const MAX_BYTES = 500 * 1024 * 1024 // 500 MB
 
@@ -34,7 +35,7 @@ export function FileDrop({ deviceId, children }: Props) {
 
         const toastId = toast.loading(`Pushing ${file.name}…`)
         try {
-          const res = await fetch(`/api/v1/devices/${deviceId}/files/push`, {
+          const res = await apiFetch(`/api/v1/devices/${deviceId}/files/push`, {
             method: "POST",
             body: formData,
           })

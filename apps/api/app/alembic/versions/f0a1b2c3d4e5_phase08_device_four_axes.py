@@ -29,8 +29,8 @@ def upgrade() -> None:
     # Host Resource Ledger — durable per-device reservations
     op.create_table(
         "hostreservation",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("device_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("device_id", sa.String(), nullable=False),
         sa.Column("ram_mb", sa.Integer(), nullable=False),
         sa.Column("vcpu", sa.Float(), nullable=False),
         sa.Column("disk_mb", sa.Integer(), nullable=False),
@@ -43,8 +43,8 @@ def upgrade() -> None:
     # DeviceLogEvent — per-device structured log bus
     op.create_table(
         "devicelogevent",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("device_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("device_id", sa.String(), nullable=False),
         sa.Column("ts", sa.DateTime(timezone=True), nullable=False),
         sa.Column("level", sa.String(16), nullable=False),
         sa.Column("source", sa.String(32), nullable=False),

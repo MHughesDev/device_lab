@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState, useEffect, useRef } from "react"
 import { Plus, X, Pin, Monitor } from "lucide-react"
 import { toast } from "sonner"
+import { apiFetch } from "@/lib/api"
 import { DeviceTabStore } from "@/stores/deviceTabs"
 import type { DeviceTab } from "@/stores/deviceTabs"
 import { useDeviceTabs } from "@/hooks/useDeviceTabs"
@@ -18,7 +19,6 @@ import { LogPanel } from "@/components/devices/LogPanel"
 import { ResourceHud } from "@/components/devices/ResourceHud"
 import { DeviceOptionsMenu } from "@/components/devices/DeviceOptionsMenu"
 import { deviceTitle, type Device } from "@/lib/types"
-import { ClipboardSync } from "@/lib/webrtc/clipboard"
 
 export const Route = createFileRoute("/_layout/workspace")({
   component: WorkspacePage,
@@ -77,7 +77,7 @@ function RenameInput({ tab, onDone }: { tab: DeviceTab; onDone(): void }) {
     const name = val.trim()
     if (!name || name === tab.title) { onDone(); return }
     try {
-      const res = await fetch(`/api/v1/devices/${tab.id}`, {
+      const res = await apiFetch(`/api/v1/devices/${tab.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
@@ -120,7 +120,7 @@ function WorkspacePage() {
   const { data: devices } = useQuery<Device[]>({
     queryKey: ["devices"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/devices/")
+      const res = await apiFetch("/api/v1/devices/")
       if (!res.ok) throw new Error("Failed to load devices")
       return res.json()
     },
@@ -163,7 +163,7 @@ function WorkspacePage() {
 
   async function attach() {
     if (!activeId) return
-    const res = await fetch(`/api/v1/devices/${activeId}/display/attach`, { method: "POST" })
+    const res = await apiFetch(`/api/v1/devices/${activeId}/display/attach`, { method: "POST" })
     if (!res.ok) throw new Error(await res.text())
     DeviceTabStore.updateTab(activeId, { displayMode: "interactive" })
     qc.invalidateQueries({ queryKey: ["devices"] })
@@ -171,7 +171,7 @@ function WorkspacePage() {
 
   async function detach() {
     if (!activeId) return
-    await fetch(`/api/v1/devices/${activeId}/display/detach`, { method: "POST" })
+    await apiFetch(`/api/v1/devices/${activeId}/display/detach`, { method: "POST" })
     DeviceTabStore.updateTab(activeId, { displayMode: "headless" })
     qc.invalidateQueries({ queryKey: ["devices"] })
   }
@@ -180,7 +180,7 @@ function WorkspacePage() {
     const path = window.prompt("Remote path to pull:", "/tmp/")
     if (!path || !activeId) return
     try {
-      const res = await fetch(`/api/v1/devices/${activeId}/files/pull?path=${encodeURIComponent(path)}`)
+      const res = await apiFetch(`/api/v1/devices/${activeId}/files/pull?path=${encodeURIComponent(path)}`)
       if (!res.ok) throw new Error(await res.text())
       const blob = await res.blob()
       const fname = path.split("/").pop() ?? "file"

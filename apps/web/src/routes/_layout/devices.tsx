@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
+import { apiFetch } from "@/lib/api"
 import { DeviceTabStore } from "@/stores/deviceTabs"
-import { deviceTitle } from "@/lib/types"
+import { deviceTitle, type DeviceFamily } from "@/lib/types"
 
 export const Route = createFileRoute("/_layout/devices")({
   component: DevicesPage,
@@ -11,7 +12,7 @@ export const Route = createFileRoute("/_layout/devices")({
 
 interface Device {
   id: string
-  family: string
+  family: DeviceFamily
   name: string | null
   display_mode: "headless" | "interactive"
   mcp_exposed: boolean
@@ -52,7 +53,7 @@ function DevicesPage() {
   const { data: devices, isLoading } = useQuery<Device[]>({
     queryKey: ["devices"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/devices/")
+      const res = await apiFetch("/api/v1/devices/")
       if (!res.ok) throw new Error("Failed to load devices")
       return res.json()
     },
@@ -62,7 +63,7 @@ function DevicesPage() {
   async function lifecycle(deviceId: string, action: "stop" | "start" | "terminate") {
     setActionLoading(`${deviceId}-${action}`)
     try {
-      await fetch(`/api/v1/devices/${deviceId}/lifecycle/${action}`, { method: "POST" })
+      await apiFetch(`/api/v1/devices/${deviceId}/lifecycle/${action}`, { method: "POST" })
       qc.invalidateQueries({ queryKey: ["devices"] })
     } finally {
       setActionLoading(null)

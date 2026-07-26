@@ -4,6 +4,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronLeft, Layers } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,7 @@ export function ManifestPicker({ open, onClose, onBack }: Props) {
   const { data: manifests, isLoading } = useQuery<DeviceManifest[]>({
     queryKey: ["manifests"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/manifests/")
+      const res = await apiFetch("/api/v1/manifests/")
       if (!res.ok) throw new Error("Failed to load manifests")
       return res.json()
     },
@@ -45,7 +46,7 @@ export function ManifestPicker({ open, onClose, onBack }: Props) {
     setCreating(true)
     setError(null)
     try {
-      const res = await fetch("/api/v1/devices/", {
+      const res = await apiFetch("/api/v1/devices/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ manifest_id: selectedId }),

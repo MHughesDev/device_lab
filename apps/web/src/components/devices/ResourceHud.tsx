@@ -2,6 +2,7 @@
 // Shows per-host RAM/CPU committed vs total and a host budget bar.
 
 import { useQuery } from "@tanstack/react-query"
+import { apiFetch } from "@/lib/api"
 import type { HostResources } from "@/lib/types"
 
 function Bar({ value, max, color = "bg-primary" }: { value: number; max: number; color?: string }) {
@@ -25,7 +26,7 @@ export function ResourceHud() {
   const { data } = useQuery<HostResources>({
     queryKey: ["host-resources"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/host/resources")
+      const res = await apiFetch("/api/v1/host/resources")
       if (!res.ok) throw new Error("Failed to load resources")
       return res.json()
     },

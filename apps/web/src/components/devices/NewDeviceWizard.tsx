@@ -4,6 +4,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronLeft, ChevronRight, Check } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 import {
   Dialog,
   DialogContent,
@@ -45,7 +46,7 @@ export function NewDeviceWizard({ open, onClose }: Props) {
   const { data: templates } = useQuery<Template[]>({
     queryKey: ["templates"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/templates/")
+      const res = await apiFetch("/api/v1/templates/")
       if (!res.ok) throw new Error("Failed to load templates")
       return res.json()
     },
@@ -87,7 +88,7 @@ export function NewDeviceWizard({ open, onClose }: Props) {
       }
       if (name.trim()) body.name = name.trim()
 
-      const res = await fetch("/api/v1/devices/", {
+      const res = await apiFetch("/api/v1/devices/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -114,12 +115,6 @@ export function NewDeviceWizard({ open, onClose }: Props) {
       setStep("name")
     }
   }
-
-  const canGoNext =
-    step === "os" ||
-    step === "display" ||
-    step === "mcp" ||
-    step === "name"
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>

@@ -51,11 +51,12 @@ spec/
 **/tests/
 **/test_*.py
 **/*_test.py
+# App modules whose names happen to start with "test_" — NOT test files
+!apps/api/app/api/routes/test_runs.py
+!apps/api/app/services/test_runs.py
 
 # Node (for optional profiles not included in API image)
 node_modules/
-apps/web/
-apps/mobile/
 
 # Deployment artifacts
 deploy/
@@ -67,7 +68,7 @@ monitoring/
 .github/
 
 # Scripts (not needed unless used at container entrypoint)
-scripts/
+/scripts/
 
 # Build outputs
 dist/

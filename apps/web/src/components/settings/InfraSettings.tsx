@@ -8,6 +8,7 @@ import {
   Cloud, Server, Radio, Layers, Shield, Monitor,
   CheckCircle, XCircle, Loader2, RefreshCw
 } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 import { toast } from "sonner"
 import { SettingRow } from "./SettingRow"
 import { SecretInput } from "./SecretInput"
@@ -15,13 +16,13 @@ import { SecretInput } from "./SecretInput"
 type AllSettings = Record<string, Record<string, unknown>>
 
 async function fetchSettings(): Promise<AllSettings> {
-  const res = await fetch("/api/v1/settings/")
+  const res = await apiFetch("/api/v1/settings/")
   if (!res.ok) throw new Error("Failed to load settings")
   return res.json()
 }
 
 async function patchGroup(group: string, values: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const res = await fetch(`/api/v1/settings/${group}`, {
+  const res = await apiFetch(`/api/v1/settings/${group}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ values }),
@@ -174,7 +175,7 @@ export function InfraSettings() {
     setTestConnLoading(true)
     setTestConnStatus(null)
     try {
-      const res = await fetch("/api/v1/settings/cloud/test-connection", { method: "POST" })
+      const res = await apiFetch("/api/v1/settings/cloud/test-connection", { method: "POST" })
       const data = await res.json()
       setTestConnStatus(data)
     } catch (e: unknown) {

@@ -16,8 +16,8 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "secretref",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("workspace_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("workspace_id", sa.String(), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.String(1024), nullable=False, server_default=""),
         sa.Column("backend", sa.String(64), nullable=False, server_default="keyring"),
@@ -33,8 +33,8 @@ def upgrade() -> None:
 
     op.create_table(
         "recipe",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("workspace_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("workspace_id", sa.String(), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("version", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("families_json", sa.Text(), nullable=False, server_default="[]"),
@@ -48,9 +48,9 @@ def upgrade() -> None:
 
     op.create_table(
         "reciperun",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("recipe_id", sa.Uuid(), nullable=False),
-        sa.Column("device_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("recipe_id", sa.String(), nullable=False),
+        sa.Column("device_id", sa.String(), nullable=False),
         sa.Column("status", sa.String(64), nullable=False, server_default="pending"),
         sa.Column("current_step_index", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("steps_json", sa.Text(), nullable=True),
@@ -64,8 +64,8 @@ def upgrade() -> None:
 
     op.create_table(
         "streamsession",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("device_id", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("device_id", sa.String(), nullable=False),
         sa.Column("session_token", sa.String(512), nullable=False),
         sa.Column("status", sa.String(64), nullable=False, server_default="negotiating"),
         sa.Column("client_id", sa.String(255), nullable=False, server_default=""),
