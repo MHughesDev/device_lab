@@ -13,7 +13,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Requires Dependency graph (repo Settings → Code security). Do not block CI if disabled.
       - uses: actions/dependency-review-action@v4
         continue-on-error: true
@@ -21,14 +21,14 @@ jobs:
   code-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-python
       - run: make security-scan
 
   image-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: make image-build
       - name: Trivy scan
         uses: aquasecurity/trivy-action@v0.35.0
